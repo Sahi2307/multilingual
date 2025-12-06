@@ -1,0 +1,201 @@
+complaint_id,text,category,language,urgency,detected_language,emergency_keyword_score,severity_score,text_length,affected_population,repeat_complaint_count,hour_of_day,is_weekend,is_monsoon_season,split
+C0001,सार्वजनिक डस्टबिन कचरे से भर गए हैं और जानवर कचरा फैला रहे हैं।,Sanitation,Hindi,Medium,Hindi,0,0.5,13,2,1,21,0,0,train
+C0002,"गली से पिछले कई दिनों से कूड़ा नहीं उठाया गया है, बदबू से रहना मुश्किल हो गया है।",Sanitation,Hindi,High,Hindi,0,0.7,18,1,2,14,0,1,train
+C0003,"गली से पिछले कई दिनों से कूड़ा नहीं उठाया गया है, बदबू से रहना मुश्किल हो गया है।",Sanitation,Hindi,High,Hindi,0,0.7,18,2,1,17,0,0,train
+C0004,"गली से पिछले कई दिनों से कूड़ा नहीं उठाया गया है, बदबू से रहना मुश्किल हो गया है।",Sanitation,Hindi,Medium,Hindi,0,0.5,18,2,3,14,0,0,train
+C0005,सार्वजनिक डस्टबिन कचरे से भर गए हैं और जानवर कचरा फैला रहे हैं।,Sanitation,Hindi,Critical,Hindi,0,0.9,13,3,3,16,0,0,val
+C0006,"गली से पिछले कई दिनों से कूड़ा नहीं उठाया गया है, बदबू से रहना मुश्किल हो गया है।",Sanitation,Hindi,Medium,Hindi,0,0.5,18,1,0,22,0,0,test
+C0007,घर के पास नाली जाम है और गंदा पानी सड़क पर बह रहा है।,Sanitation,Hindi,Low,Hindi,0,0.3,14,0,0,17,0,0,test
+C0008,"गली से पिछले कई दिनों से कूड़ा नहीं उठाया गया है, बदबू से रहना मुश्किल हो गया है।",Sanitation,Hindi,Medium,Hindi,0,0.5,18,0,1,4,0,0,train
+C0009,"गली से पिछले कई दिनों से कूड़ा नहीं उठाया गया है, बदबू से रहना मुश्किल हो गया है।",Sanitation,Hindi,Medium,Hindi,0,0.5,18,1,0,17,0,0,train
+C0010,सार्वजनिक डस्टबिन कचरे से भर गए हैं और जानवर कचरा फैला रहे हैं।,Sanitation,Hindi,Critical,Hindi,0,0.9,13,3,1,12,1,0,train
+C0011,"गली से पिछले कई दिनों से कूड़ा नहीं उठाया गया है, बदबू से रहना मुश्किल हो गया है।",Sanitation,Hindi,High,Hindi,0,0.7,18,2,1,18,0,0,val
+C0012,"गली से पिछले कई दिनों से कूड़ा नहीं उठाया गया है, बदबू से रहना मुश्किल हो गया है।",Sanitation,Hindi,Medium,Hindi,0,0.5,18,0,1,12,1,1,train
+C0013,घर के पास नाली जाम है और गंदा पानी सड़क पर बह रहा है।,Sanitation,Hindi,Medium,Hindi,0,0.5,14,1,0,23,1,1,train
+C0014,घर के पास नाली जाम है और गंदा पानी सड़क पर बह रहा है।,Sanitation,Hindi,High,Hindi,0,0.7,14,3,2,15,0,0,train
+C0015,घर के पास नाली जाम है और गंदा पानी सड़क पर बह रहा है।,Sanitation,Hindi,Medium,Hindi,0,0.5,14,0,1,10,0,1,train
+C0016,"गली से पिछले कई दिनों से कूड़ा नहीं उठाया गया है, बदबू से रहना मुश्किल हो गया है।",Sanitation,Hindi,Low,Hindi,0,0.3,18,1,0,14,1,1,val
+C0017,घर के पास नाली जाम है और गंदा पानी सड़क पर बह रहा है।,Sanitation,Hindi,Medium,Hindi,0,0.5,14,1,3,12,0,1,train
+C0018,"गली से पिछले कई दिनों से कूड़ा नहीं उठाया गया है, बदबू से रहना मुश्किल हो गया है।",Sanitation,Hindi,Medium,Hindi,0,0.5,18,0,0,13,0,0,test
+C0019,घर के पास नाली जाम है और गंदा पानी सड़क पर बह रहा है।,Sanitation,Hindi,High,Hindi,0,0.7,14,0,2,12,0,0,train
+C0020,"गली से पिछले कई दिनों से कूड़ा नहीं उठाया गया है, बदबू से रहना मुश्किल हो गया है।",Sanitation,Hindi,Medium,Hindi,0,0.5,18,0,1,12,0,1,train
+C0021,"गली से पिछले कई दिनों से कूड़ा नहीं उठाया गया है, बदबू से रहना मुश्किल हो गया है।",Sanitation,Hindi,High,Hindi,0,0.7,18,1,3,2,0,1,train
+C0022,घर के पास नाली जाम है और गंदा पानी सड़क पर बह रहा है।,Sanitation,Hindi,Medium,Hindi,0,0.5,14,0,1,11,0,0,val
+C0023,घर के पास नाली जाम है और गंदा पानी सड़क पर बह रहा है।,Sanitation,Hindi,Medium,Hindi,0,0.5,14,3,0,1,1,1,train
+C0024,सार्वजनिक डस्टबिन कचरे से भर गए हैं और जानवर कचरा फैला रहे हैं।,Sanitation,Hindi,Medium,Hindi,0,0.5,13,0,5,0,0,0,train
+C0025,सार्वजनिक डस्टबिन कचरे से भर गए हैं और जानवर कचरा फैला रहे हैं।,Sanitation,Hindi,High,Hindi,0,0.7,13,1,0,3,0,0,test
+C0026,घर के पास नाली जाम है और गंदा पानी सड़क पर बह रहा है।,Sanitation,Hindi,Low,Hindi,0,0.3,14,1,0,11,0,1,train
+C0027,सार्वजनिक डस्टबिन कचरे से भर गए हैं और जानवर कचरा फैला रहे हैं।,Sanitation,Hindi,Medium,Hindi,0,0.5,13,2,0,3,1,0,test
+C0028,Public dustbins are overflowing and stray animals are scattering the waste.,Sanitation,English,Medium,English,0,0.5,11,0,0,18,0,0,val
+C0029,The drain near our house is blocked and dirty water is overflowing on the road.,Sanitation,English,Low,English,0,0.3,15,1,0,12,0,1,train
+C0030,Garbage has not been collected from our street for a week and the smell is unbearable.,Sanitation,English,High,English,0,0.7,16,0,2,22,1,0,test
+C0031,Garbage has not been collected from our street for a week and the smell is unbearable.,Sanitation,English,High,English,0,0.7,16,2,2,9,1,1,train
+C0032,The drain near our house is blocked and dirty water is overflowing on the road.,Sanitation,English,Low,English,0,0.3,15,0,1,18,1,0,val
+C0033,Garbage has not been collected from our street for a week and the smell is unbearable.,Sanitation,English,Low,English,0,0.3,16,0,2,11,0,1,train
+C0034,The drain near our house is blocked and dirty water is overflowing on the road.,Sanitation,English,Critical,English,0,0.9,15,0,0,13,1,0,train
+C0035,The drain near our house is blocked and dirty water is overflowing on the road.,Sanitation,English,Medium,English,0,0.5,15,3,3,20,1,0,train
+C0036,Garbage has not been collected from our street for a week and the smell is unbearable.,Sanitation,English,Critical,English,0,0.9,16,1,0,5,1,1,test
+C0037,The drain near our house is blocked and dirty water is overflowing on the road.,Sanitation,English,Medium,English,0,0.5,15,0,0,17,1,0,train
+C0038,Public dustbins are overflowing and stray animals are scattering the waste.,Sanitation,English,Low,English,0,0.3,11,1,0,18,0,1,train
+C0039,Public dustbins are overflowing and stray animals are scattering the waste.,Sanitation,English,Medium,English,0,0.5,11,2,2,2,0,0,test
+C0040,Public dustbins are overflowing and stray animals are scattering the waste.,Sanitation,English,Low,English,0,0.3,11,1,0,18,0,0,train
+C0041,Public dustbins are overflowing and stray animals are scattering the waste.,Sanitation,English,High,English,0,0.7,11,0,1,10,0,0,test
+C0042,Garbage has not been collected from our street for a week and the smell is unbearable.,Sanitation,English,Medium,English,0,0.5,16,2,3,10,0,0,val
+C0043,The drain near our house is blocked and dirty water is overflowing on the road.,Sanitation,English,Medium,English,0,0.5,15,2,0,17,0,1,train
+C0044,Public dustbins are overflowing and stray animals are scattering the waste.,Sanitation,English,Medium,English,0,0.5,11,0,2,23,0,0,train
+C0045,Garbage has not been collected from our street for a week and the smell is unbearable.,Sanitation,English,Medium,English,0,0.5,16,0,2,15,0,0,train
+C0046,Garbage has not been collected from our street for a week and the smell is unbearable.,Sanitation,English,Critical,English,0,0.9,16,3,1,2,0,0,train
+C0047,Garbage has not been collected from our street for a week and the smell is unbearable.,Sanitation,English,Medium,English,0,0.5,16,0,0,21,0,0,train
+C0048,"Nali bilkul jam hai, ganda pani road pe overflow ho raha hai.",Sanitation,Hinglish,Medium,Hinglish,0,0.5,12,1,0,13,1,0,train
+C0049,"Gali se ek hafte se kachra nahi uthaya gaya, smell se rehna mushkil ho gaya hai.",Sanitation,Hinglish,Low,Hinglish,0,0.3,16,0,0,14,0,0,train
+C0050,"Public dustbin overflow ho rahe hain, stray dogs kachra idhar-udhar phaila rahe hain.",Sanitation,Hinglish,High,English,0,0.7,13,0,3,6,0,1,train
+C0051,"Gali se ek hafte se kachra nahi uthaya gaya, smell se rehna mushkil ho gaya hai.",Sanitation,Hinglish,High,Hinglish,0,0.7,16,3,2,22,0,0,train
+C0052,"Nali bilkul jam hai, ganda pani road pe overflow ho raha hai.",Sanitation,Hinglish,High,Hinglish,0,0.7,12,1,0,23,0,1,train
+C0053,"Gali se ek hafte se kachra nahi uthaya gaya, smell se rehna mushkil ho gaya hai.",Sanitation,Hinglish,Low,Hinglish,0,0.3,16,0,0,3,1,0,train
+C0054,"Gali se ek hafte se kachra nahi uthaya gaya, smell se rehna mushkil ho gaya hai.",Sanitation,Hinglish,Medium,Hinglish,0,0.5,16,0,0,9,0,0,val
+C0055,"Public dustbin overflow ho rahe hain, stray dogs kachra idhar-udhar phaila rahe hain.",Sanitation,Hinglish,High,English,0,0.7,13,1,5,1,0,1,train
+C0056,"Public dustbin overflow ho rahe hain, stray dogs kachra idhar-udhar phaila rahe hain.",Sanitation,Hinglish,Medium,English,0,0.5,13,0,3,15,0,0,train
+C0057,"Public dustbin overflow ho rahe hain, stray dogs kachra idhar-udhar phaila rahe hain.",Sanitation,Hinglish,Low,English,0,0.3,13,0,0,15,0,0,train
+C0058,"Nali bilkul jam hai, ganda pani road pe overflow ho raha hai.",Sanitation,Hinglish,High,Hinglish,0,0.7,12,0,0,15,0,0,train
+C0059,"Nali bilkul jam hai, ganda pani road pe overflow ho raha hai.",Sanitation,Hinglish,High,Hinglish,0,0.7,12,1,1,18,0,0,train
+C0060,"Gali se ek hafte se kachra nahi uthaya gaya, smell se rehna mushkil ho gaya hai.",Sanitation,Hinglish,Low,Hinglish,0,0.3,16,0,1,18,1,0,test
+C0061,"Public dustbin overflow ho rahe hain, stray dogs kachra idhar-udhar phaila rahe hain.",Sanitation,Hinglish,Medium,English,0,0.5,13,0,0,17,1,1,val
+C0062,"Gali se ek hafte se kachra nahi uthaya gaya, smell se rehna mushkil ho gaya hai.",Sanitation,Hinglish,Low,Hinglish,0,0.3,16,1,0,7,1,0,train
+C0063,"Gali se ek hafte se kachra nahi uthaya gaya, smell se rehna mushkil ho gaya hai.",Sanitation,Hinglish,High,Hinglish,0,0.7,16,3,1,9,1,1,val
+C0064,"Public dustbin overflow ho rahe hain, stray dogs kachra idhar-udhar phaila rahe hain.",Sanitation,Hinglish,Medium,English,0,0.5,13,0,0,19,0,1,train
+C0065,"Public dustbin overflow ho rahe hain, stray dogs kachra idhar-udhar phaila rahe hain.",Sanitation,Hinglish,Low,English,0,0.3,13,0,0,6,0,0,train
+C0066,"Public dustbin overflow ho rahe hain, stray dogs kachra idhar-udhar phaila rahe hain.",Sanitation,Hinglish,High,English,0,0.7,13,0,3,7,0,0,train
+C0067,"पानी का प्रेशर बहुत कम है, टंकी बिल्कुल नहीं भर रही है।",Water Supply,Hindi,High,Hindi,0,0.7,12,0,3,14,0,0,train
+C0068,"घर के पास पानी की पाइपलाइन से लीकेज हो रही है, बहुत पानी बर्बाद हो रहा है।",Water Supply,Hindi,Low,Hindi,0,0.3,17,0,0,9,0,1,train
+C0069,"घर के पास पानी की पाइपलाइन से लीकेज हो रही है, बहुत पानी बर्बाद हो रहा है।",Water Supply,Hindi,Low,Hindi,0,0.3,17,0,0,21,0,0,train
+C0070,"घर के पास पानी की पाइपलाइन से लीकेज हो रही है, बहुत पानी बर्बाद हो रहा है।",Water Supply,Hindi,Medium,Hindi,0,0.5,17,2,0,18,0,1,train
+C0071,"घर के पास पानी की पाइपलाइन से लीकेज हो रही है, बहुत पानी बर्बाद हो रहा है।",Water Supply,Hindi,Medium,Hindi,0,0.5,17,1,0,17,0,0,train
+C0072,"घर के पास पानी की पाइपलाइन से लीकेज हो रही है, बहुत पानी बर्बाद हो रहा है।",Water Supply,Hindi,High,Hindi,0,0.7,17,1,2,4,0,0,train
+C0073,"पानी का प्रेशर बहुत कम है, टंकी बिल्कुल नहीं भर रही है।",Water Supply,Hindi,Low,Hindi,0,0.3,12,0,0,23,1,1,test
+C0074,"हमारे इलाके में पिछले 3 दिनों से पानी की सप्लाई बंद है, लोग बहुत परेशान हैं।",Water Supply,Hindi,Medium,Hindi,0,0.5,16,1,1,14,0,1,train
+C0075,"पानी का प्रेशर बहुत कम है, टंकी बिल्कुल नहीं भर रही है।",Water Supply,Hindi,Critical,Hindi,0,0.9,12,3,1,16,0,0,train
+C0076,"पानी का प्रेशर बहुत कम है, टंकी बिल्कुल नहीं भर रही है।",Water Supply,Hindi,High,Hindi,0,0.7,12,2,3,13,1,1,test
+C0077,"घर के पास पानी की पाइपलाइन से लीकेज हो रही है, बहुत पानी बर्बाद हो रहा है।",Water Supply,Hindi,Low,Hindi,0,0.3,17,0,0,7,1,1,train
+C0078,"घर के पास पानी की पाइपलाइन से लीकेज हो रही है, बहुत पानी बर्बाद हो रहा है।",Water Supply,Hindi,Medium,Hindi,0,0.5,17,1,1,0,1,1,test
+C0079,"घर के पास पानी की पाइपलाइन से लीकेज हो रही है, बहुत पानी बर्बाद हो रहा है।",Water Supply,Hindi,Medium,Hindi,0,0.5,17,0,2,1,1,0,train
+C0080,"घर के पास पानी की पाइपलाइन से लीकेज हो रही है, बहुत पानी बर्बाद हो रहा है।",Water Supply,Hindi,High,Hindi,0,0.7,17,2,0,14,1,0,train
+C0081,"घर के पास पानी की पाइपलाइन से लीकेज हो रही है, बहुत पानी बर्बाद हो रहा है।",Water Supply,Hindi,Low,Hindi,0,0.3,17,0,1,20,1,1,train
+C0082,"घर के पास पानी की पाइपलाइन से लीकेज हो रही है, बहुत पानी बर्बाद हो रहा है।",Water Supply,Hindi,High,Hindi,0,0.7,17,1,1,13,0,1,val
+C0083,"हमारे इलाके में पिछले 3 दिनों से पानी की सप्लाई बंद है, लोग बहुत परेशान हैं।",Water Supply,Hindi,Low,Hindi,0,0.3,16,2,0,10,0,0,train
+C0084,"हमारे इलाके में पिछले 5 दिनों से पानी की सप्लाई बंद है, लोग बहुत परेशान हैं।",Water Supply,Hindi,Critical,Hindi,0,0.9,16,3,1,12,1,0,train
+C0085,"घर के पास पानी की पाइपलाइन से लीकेज हो रही है, बहुत पानी बर्बाद हो रहा है।",Water Supply,Hindi,Medium,Hindi,0,0.5,17,1,1,10,0,0,train
+C0086,"घर के पास पानी की पाइपलाइन से लीकेज हो रही है, बहुत पानी बर्बाद हो रहा है।",Water Supply,Hindi,Medium,Hindi,0,0.5,17,2,1,16,1,0,test
+C0087,"पानी का प्रेशर बहुत कम है, टंकी बिल्कुल नहीं भर रही है।",Water Supply,Hindi,High,Hindi,0,0.7,12,3,3,14,0,0,test
+C0088,"हमारे इलाके में पिछले 3 दिनों से पानी की सप्लाई बंद है, लोग बहुत परेशान हैं।",Water Supply,Hindi,High,Hindi,0,0.7,16,1,1,15,0,1,train
+C0089,"पानी का प्रेशर बहुत कम है, टंकी बिल्कुल नहीं भर रही है।",Water Supply,Hindi,Medium,Hindi,0,0.5,12,0,2,17,0,0,train
+C0090,"हमारे इलाके में पिछले 2 दिनों से पानी की सप्लाई बंद है, लोग बहुत परेशान हैं।",Water Supply,Hindi,Critical,Hindi,0,0.9,16,3,4,15,0,1,train
+C0091,"घर के पास पानी की पाइपलाइन से लीकेज हो रही है, बहुत पानी बर्बाद हो रहा है।",Water Supply,Hindi,Medium,Hindi,0,0.5,17,1,0,7,0,0,train
+C0092,"हमारे इलाके में पिछले 4 दिनों से पानी की सप्लाई बंद है, लोग बहुत परेशान हैं।",Water Supply,Hindi,High,Hindi,0,0.7,16,0,4,13,0,1,test
+C0093,"There has been no water supply in our area for the past 5 days, residents are suffering.",Water Supply,English,High,English,1,0.8,17,3,5,14,1,1,train
+C0094,"There has been no water supply in our area for the past 2 days, residents are suffering.",Water Supply,English,Medium,English,1,0.6,17,0,0,22,0,1,train
+C0095,Water pipeline leakage near our house is wasting a lot of clean water.,Water Supply,English,Medium,English,0,0.5,13,1,2,15,1,0,test
+C0096,Water pipeline leakage near our house is wasting a lot of clean water.,Water Supply,English,Low,English,0,0.3,13,0,0,12,0,0,val
+C0097,Water pressure is very low in our building and tanks are not filling properly.,Water Supply,English,Medium,English,0,0.5,14,2,1,4,1,0,train
+C0098,Water pipeline leakage near our house is wasting a lot of clean water.,Water Supply,English,Medium,English,0,0.5,13,2,0,13,0,1,test
+C0099,"There has been no water supply in our area for the past 5 days, residents are suffering.",Water Supply,English,Medium,English,1,0.6,17,0,2,0,0,0,train
+C0100,Water pipeline leakage near our house is wasting a lot of clean water.,Water Supply,English,High,English,0,0.7,13,2,2,21,0,0,train
+C0101,Water pipeline leakage near our house is wasting a lot of clean water.,Water Supply,English,Low,English,0,0.3,13,0,0,11,0,1,train
+C0102,Water pressure is very low in our building and tanks are not filling properly.,Water Supply,English,Medium,English,0,0.5,14,0,3,10,1,1,val
+C0103,Water pressure is very low in our building and tanks are not filling properly.,Water Supply,English,Low,English,0,0.3,14,0,0,12,0,1,train
+C0104,Water pressure is very low in our building and tanks are not filling properly.,Water Supply,English,Critical,English,0,0.9,14,0,0,23,0,1,test
+C0105,"There has been no water supply in our area for the past 2 days, residents are suffering.",Water Supply,English,Low,English,1,0.4,17,0,0,21,1,1,test
+C0106,"There has been no water supply in our area for the past 3 days, residents are suffering.",Water Supply,English,High,English,1,0.8,17,0,1,1,0,1,val
+C0107,"There has been no water supply in our area for the past 5 days, residents are suffering.",Water Supply,English,High,English,1,0.8,17,1,5,3,1,0,val
+C0108,Water pipeline leakage near our house is wasting a lot of clean water.,Water Supply,English,Medium,English,0,0.5,13,1,1,14,0,0,train
+C0109,Water pipeline leakage near our house is wasting a lot of clean water.,Water Supply,English,Medium,English,0,0.5,13,2,0,4,0,1,train
+C0110,"There has been no water supply in our area for the past 1 days, residents are suffering.",Water Supply,English,High,English,1,0.8,17,1,2,19,0,1,train
+C0111,Water pipeline leakage near our house is wasting a lot of clean water.,Water Supply,English,High,English,0,0.7,13,3,1,21,1,0,train
+C0112,"There has been no water supply in our area for the past 1 days, residents are suffering.",Water Supply,English,Medium,English,1,0.6,17,0,3,22,1,0,train
+C0113,"Hamare area me 3 din se pani nahi aa raha, log bahut pareshaan hain.",Water Supply,Hinglish,Medium,English,0,0.5,14,1,0,19,0,1,val
+C0114,"Hamare area me 5 din se pani nahi aa raha, log bahut pareshaan hain.",Water Supply,Hinglish,Medium,English,0,0.5,14,3,4,7,1,0,train
+C0115,"Hamare area me 3 din se pani nahi aa raha, log bahut pareshaan hain.",Water Supply,Hinglish,Low,English,0,0.3,14,0,0,20,0,0,train
+C0116,"Ghar ke paas wali pipeline me leakage hai, bahut saara pani waste ho raha hai.",Water Supply,Hinglish,High,Hinglish,0,0.7,15,0,2,9,1,0,train
+C0117,"Hamare area me 5 din se pani nahi aa raha, log bahut pareshaan hain.",Water Supply,Hinglish,High,English,0,0.7,14,2,1,9,0,0,train
+C0118,"Hamare area me 5 din se pani nahi aa raha, log bahut pareshaan hain.",Water Supply,Hinglish,High,English,0,0.7,14,1,3,13,0,1,train
+C0119,"Ghar ke paas wali pipeline me leakage hai, bahut saara pani waste ho raha hai.",Water Supply,Hinglish,Critical,Hinglish,0,0.9,15,1,2,2,0,0,train
+C0120,"Hamare area me 4 din se pani nahi aa raha, log bahut pareshaan hain.",Water Supply,Hinglish,Critical,English,0,0.9,14,3,5,15,1,0,train
+C0121,"Building me pani ka pressure bahut low hai, tank bhar hi nahi raha.",Water Supply,Hinglish,Medium,English,0,0.5,13,1,0,8,0,1,train
+C0122,"Hamare area me 1 din se pani nahi aa raha, log bahut pareshaan hain.",Water Supply,Hinglish,High,English,0,0.7,14,3,5,14,1,1,train
+C0123,"Ghar ke paas wali pipeline me leakage hai, bahut saara pani waste ho raha hai.",Water Supply,Hinglish,High,Hinglish,0,0.7,15,0,5,14,1,1,train
+C0124,"Building me pani ka pressure bahut low hai, tank bhar hi nahi raha.",Water Supply,Hinglish,Low,English,0,0.3,13,0,0,13,0,0,val
+C0125,"Building me pani ka pressure bahut low hai, tank bhar hi nahi raha.",Water Supply,Hinglish,Medium,English,0,0.5,13,0,0,12,1,0,train
+C0126,"Ghar ke paas wali pipeline me leakage hai, bahut saara pani waste ho raha hai.",Water Supply,Hinglish,Medium,Hinglish,0,0.5,15,0,1,11,0,1,train
+C0127,"Ghar ke paas wali pipeline me leakage hai, bahut saara pani waste ho raha hai.",Water Supply,Hinglish,Critical,Hinglish,0,0.9,15,1,2,21,0,0,val
+C0128,"Hamare area me 4 din se pani nahi aa raha, log bahut pareshaan hain.",Water Supply,Hinglish,Critical,English,0,0.9,14,3,1,23,1,1,train
+C0129,"Ghar ke paas wali pipeline me leakage hai, bahut saara pani waste ho raha hai.",Water Supply,Hinglish,Medium,Hinglish,0,0.5,15,2,0,9,1,0,train
+C0130,"Hamare area me 2 din se pani nahi aa raha, log bahut pareshaan hain.",Water Supply,Hinglish,Medium,English,0,0.5,14,2,1,7,0,1,train
+C0131,"Hamare area me 2 din se pani nahi aa raha, log bahut pareshaan hain.",Water Supply,Hinglish,Medium,English,0,0.5,14,1,0,23,1,1,train
+C0132,"Ghar ke paas wali pipeline me leakage hai, bahut saara pani waste ho raha hai.",Water Supply,Hinglish,Medium,Hinglish,0,0.5,15,0,2,3,1,1,val
+C0133,"Hamare area me 4 din se pani nahi aa raha, log bahut pareshaan hain.",Water Supply,Hinglish,Medium,English,0,0.5,14,0,1,14,0,0,val
+C0134,"स्कूल के पास वाली मुख्य सड़क पर बहुत गड्ढे हैं, कभी भी दुर्घटना हो सकती है।",Transportation,Hindi,Critical,Hindi,0,0.9,16,1,0,9,0,0,train
+C0135,"मुख्य सड़क पर लगी स्ट्रीटलाइट्स काम नहीं कर रही हैं, रात में बहुत खतरा रहता है।",Transportation,Hindi,High,Hindi,1,0.8,16,1,3,17,1,0,train
+C0136,"स्कूल के पास वाली मुख्य सड़क पर बहुत गड्ढे हैं, कभी भी दुर्घटना हो सकती है।",Transportation,Hindi,Medium,Hindi,0,0.5,16,1,2,8,1,0,test
+C0137,"बस स्टॉप पर शेल्टर नहीं है, लोग सड़क पर खड़े होकर बस का इंतज़ार करते हैं।",Transportation,Hindi,Medium,Hindi,0,0.5,16,2,1,15,1,0,train
+C0138,"स्कूल के पास वाली मुख्य सड़क पर बहुत गड्ढे हैं, कभी भी दुर्घटना हो सकती है।",Transportation,Hindi,High,Hindi,0,0.7,16,3,1,3,0,0,val
+C0139,"स्कूल के पास वाली मुख्य सड़क पर बहुत गड्ढे हैं, कभी भी दुर्घटना हो सकती है।",Transportation,Hindi,Medium,Hindi,0,0.5,16,2,0,7,1,1,train
+C0140,"स्कूल के पास वाली मुख्य सड़क पर बहुत गड्ढे हैं, कभी भी दुर्घटना हो सकती है।",Transportation,Hindi,High,Hindi,0,0.7,16,3,4,17,0,1,train
+C0141,"मुख्य सड़क पर लगी स्ट्रीटलाइट्स काम नहीं कर रही हैं, रात में बहुत खतरा रहता है।",Transportation,Hindi,High,Hindi,1,0.8,16,0,1,17,0,0,test
+C0142,"मुख्य सड़क पर लगी स्ट्रीटलाइट्स काम नहीं कर रही हैं, रात में बहुत खतरा रहता है।",Transportation,Hindi,Low,Hindi,1,0.4,16,1,0,8,0,1,train
+C0143,"मुख्य सड़क पर लगी स्ट्रीटलाइट्स काम नहीं कर रही हैं, रात में बहुत खतरा रहता है।",Transportation,Hindi,Medium,Hindi,1,0.6,16,3,2,3,0,0,train
+C0144,"स्कूल के पास वाली मुख्य सड़क पर बहुत गड्ढे हैं, कभी भी दुर्घटना हो सकती है।",Transportation,Hindi,Medium,Hindi,0,0.5,16,1,3,17,0,1,train
+C0145,"स्कूल के पास वाली मुख्य सड़क पर बहुत गड्ढे हैं, कभी भी दुर्घटना हो सकती है।",Transportation,Hindi,High,Hindi,0,0.7,16,2,1,20,1,1,train
+C0146,"मुख्य सड़क पर लगी स्ट्रीटलाइट्स काम नहीं कर रही हैं, रात में बहुत खतरा रहता है।",Transportation,Hindi,High,Hindi,1,0.8,16,1,2,13,0,0,train
+C0147,"मुख्य सड़क पर लगी स्ट्रीटलाइट्स काम नहीं कर रही हैं, रात में बहुत खतरा रहता है।",Transportation,Hindi,Medium,Hindi,1,0.6,16,0,0,15,0,0,train
+C0148,"बस स्टॉप पर शेल्टर नहीं है, लोग सड़क पर खड़े होकर बस का इंतज़ार करते हैं।",Transportation,Hindi,Low,Hindi,0,0.3,16,0,0,12,0,1,val
+C0149,"बस स्टॉप पर शेल्टर नहीं है, लोग सड़क पर खड़े होकर बस का इंतज़ार करते हैं।",Transportation,Hindi,Medium,Hindi,0,0.5,16,2,0,17,0,1,val
+C0150,"स्कूल के पास वाली मुख्य सड़क पर बहुत गड्ढे हैं, कभी भी दुर्घटना हो सकती है।",Transportation,Hindi,High,Hindi,0,0.7,16,0,3,13,0,1,train
+C0151,"मुख्य सड़क पर लगी स्ट्रीटलाइट्स काम नहीं कर रही हैं, रात में बहुत खतरा रहता है।",Transportation,Hindi,High,Hindi,1,0.8,16,2,2,8,0,0,val
+C0152,"स्कूल के पास वाली मुख्य सड़क पर बहुत गड्ढे हैं, कभी भी दुर्घटना हो सकती है।",Transportation,Hindi,High,Hindi,0,0.7,16,1,2,7,1,0,train
+C0153,"बस स्टॉप पर शेल्टर नहीं है, लोग सड़क पर खड़े होकर बस का इंतज़ार करते हैं।",Transportation,Hindi,Low,Hindi,0,0.3,16,1,0,17,1,1,train
+C0154,"स्कूल के पास वाली मुख्य सड़क पर बहुत गड्ढे हैं, कभी भी दुर्घटना हो सकती है।",Transportation,Hindi,Medium,Hindi,0,0.5,16,0,0,8,0,0,test
+C0155,"स्कूल के पास वाली मुख्य सड़क पर बहुत गड्ढे हैं, कभी भी दुर्घटना हो सकती है।",Transportation,Hindi,Low,Hindi,0,0.3,16,1,0,14,0,0,train
+C0156,"बस स्टॉप पर शेल्टर नहीं है, लोग सड़क पर खड़े होकर बस का इंतज़ार करते हैं।",Transportation,Hindi,Low,Hindi,0,0.3,16,1,0,0,0,0,val
+C0157,"बस स्टॉप पर शेल्टर नहीं है, लोग सड़क पर खड़े होकर बस का इंतज़ार करते हैं।",Transportation,Hindi,Critical,Hindi,0,0.9,16,3,3,18,0,1,train
+C0158,"स्कूल के पास वाली मुख्य सड़क पर बहुत गड्ढे हैं, कभी भी दुर्घटना हो सकती है।",Transportation,Hindi,Medium,Hindi,0,0.5,16,1,0,18,0,1,val
+C0159,"बस स्टॉप पर शेल्टर नहीं है, लोग सड़क पर खड़े होकर बस का इंतज़ार करते हैं।",Transportation,Hindi,High,Hindi,0,0.7,16,1,1,4,1,0,train
+C0160,"स्कूल के पास वाली मुख्य सड़क पर बहुत गड्ढे हैं, कभी भी दुर्घटना हो सकती है।",Transportation,Hindi,Low,Hindi,0,0.3,16,0,0,4,1,0,train
+C0161,The bus stop has no proper shelter and people stand on the road in traffic.,Transportation,English,High,English,0,0.7,15,2,3,3,0,0,train
+C0162,The bus stop has no proper shelter and people stand on the road in traffic.,Transportation,English,High,English,0,0.7,15,0,3,7,0,0,train
+C0163,"Streetlights on the main road are not working, making it very unsafe at night.",Transportation,English,Medium,English,0,0.5,14,0,2,4,1,0,train
+C0164,The bus stop has no proper shelter and people stand on the road in traffic.,Transportation,English,Medium,English,0,0.5,15,2,0,15,0,0,train
+C0165,The bus stop has no proper shelter and people stand on the road in traffic.,Transportation,English,Low,English,0,0.3,15,0,0,14,0,1,train
+C0166,The main road near the school is full of potholes and accidents can happen anytime.,Transportation,English,Medium,English,1,0.6,15,0,0,21,0,0,val
+C0167,The main road near the school is full of potholes and accidents can happen anytime.,Transportation,English,High,English,1,0.8,15,3,0,1,1,1,train
+C0168,The bus stop has no proper shelter and people stand on the road in traffic.,Transportation,English,High,English,0,0.7,15,1,1,3,0,1,test
+C0169,The bus stop has no proper shelter and people stand on the road in traffic.,Transportation,English,High,English,0,0.7,15,0,2,2,0,0,train
+C0170,"Streetlights on the main road are not working, making it very unsafe at night.",Transportation,English,Medium,English,0,0.5,14,0,1,19,0,0,val
+C0171,The main road near the school is full of potholes and accidents can happen anytime.,Transportation,English,Low,English,1,0.4,15,0,0,19,0,0,train
+C0172,The main road near the school is full of potholes and accidents can happen anytime.,Transportation,English,Medium,English,1,0.6,15,1,3,3,1,0,train
+C0173,"Streetlights on the main road are not working, making it very unsafe at night.",Transportation,English,High,English,0,0.7,14,2,2,17,1,0,train
+C0174,The bus stop has no proper shelter and people stand on the road in traffic.,Transportation,English,Critical,English,0,0.9,15,2,4,7,0,1,train
+C0175,"Streetlights on the main road are not working, making it very unsafe at night.",Transportation,English,High,English,0,0.7,14,1,4,23,0,0,val
+C0176,The main road near the school is full of potholes and accidents can happen anytime.,Transportation,English,Medium,English,1,0.6,15,1,2,11,1,1,train
+C0177,"Streetlights on the main road are not working, making it very unsafe at night.",Transportation,English,High,English,0,0.7,14,1,3,2,1,0,test
+C0178,The bus stop has no proper shelter and people stand on the road in traffic.,Transportation,English,Low,English,0,0.3,15,0,1,23,0,0,train
+C0179,The main road near the school is full of potholes and accidents can happen anytime.,Transportation,English,Medium,English,1,0.6,15,0,0,17,0,1,train
+C0180,The main road near the school is full of potholes and accidents can happen anytime.,Transportation,English,Medium,English,1,0.6,15,1,1,21,1,0,train
+C0181,"Main road ki streetlights kaam nahi kar rahi, raat me bahut khatra rehta hai.",Transportation,Hinglish,Critical,Hinglish,0,0.9,14,3,4,1,1,1,test
+C0182,"Main road ki streetlights kaam nahi kar rahi, raat me bahut khatra rehta hai.",Transportation,Hinglish,Medium,Hinglish,0,0.5,14,0,1,18,0,0,train
+C0183,"School ke paas wali main road par bahut potholes hain, kabhi bhi accident ho sakta hai.",Transportation,Hinglish,High,Hinglish,1,0.8,16,1,3,3,0,0,train
+C0184,"Main road ki streetlights kaam nahi kar rahi, raat me bahut khatra rehta hai.",Transportation,Hinglish,Low,Hinglish,0,0.3,14,0,1,8,0,1,train
+C0185,"Main road ki streetlights kaam nahi kar rahi, raat me bahut khatra rehta hai.",Transportation,Hinglish,Critical,Hinglish,0,0.9,14,3,1,19,0,1,train
+C0186,"Bus stop pe proper shelter nahi है, log road par khade hokar bus ka wait karte हैं.",Transportation,Hinglish,High,Hindi,0,0.7,17,0,3,21,1,0,train
+C0187,"Bus stop pe proper shelter nahi है, log road par khade hokar bus ka wait karte हैं.",Transportation,Hinglish,Critical,Hindi,0,0.9,17,1,0,22,1,1,train
+C0188,"School ke paas wali main road par bahut potholes hain, kabhi bhi accident ho sakta hai.",Transportation,Hinglish,Medium,Hinglish,1,0.6,16,0,0,5,1,0,train
+C0189,"Main road ki streetlights kaam nahi kar rahi, raat me bahut khatra rehta hai.",Transportation,Hinglish,Medium,Hinglish,0,0.5,14,1,2,4,1,1,train
+C0190,"School ke paas wali main road par bahut potholes hain, kabhi bhi accident ho sakta hai.",Transportation,Hinglish,Low,Hinglish,1,0.4,16,0,0,16,0,0,train
+C0191,"School ke paas wali main road par bahut potholes hain, kabhi bhi accident ho sakta hai.",Transportation,Hinglish,Medium,Hinglish,1,0.6,16,0,1,11,0,0,train
+C0192,"Bus stop pe proper shelter nahi है, log road par khade hokar bus ka wait karte हैं.",Transportation,Hinglish,Medium,Hindi,0,0.5,17,3,2,19,0,0,test
+C0193,"School ke paas wali main road par bahut potholes hain, kabhi bhi accident ho sakta hai.",Transportation,Hinglish,Low,Hinglish,1,0.4,16,0,0,19,0,0,train
+C0194,"Main road ki streetlights kaam nahi kar rahi, raat me bahut khatra rehta hai.",Transportation,Hinglish,High,Hinglish,0,0.7,14,1,3,13,0,0,test
+C0195,"School ke paas wali main road par bahut potholes hain, kabhi bhi accident ho sakta hai.",Transportation,Hinglish,High,Hinglish,1,0.8,16,1,4,16,0,0,train
+C0196,"School ke paas wali main road par bahut potholes hain, kabhi bhi accident ho sakta hai.",Transportation,Hinglish,Low,Hinglish,1,0.4,16,0,1,21,0,0,test
+C0197,"Bus stop pe proper shelter nahi है, log road par khade hokar bus ka wait karte हैं.",Transportation,Hinglish,High,Hindi,0,0.7,17,1,2,7,0,0,train
+C0198,"Main road ki streetlights kaam nahi kar rahi, raat me bahut khatra rehta hai.",Transportation,Hinglish,Low,Hinglish,0,0.3,14,0,0,9,1,1,test
+C0199,"School ke paas wali main road par bahut potholes hain, kabhi bhi accident ho sakta hai.",Transportation,Hinglish,Medium,Hinglish,1,0.6,16,2,0,9,0,0,train
+C0200,"Main road ki streetlights kaam nahi kar rahi, raat me bahut khatra rehta hai.",Transportation,Hinglish,Critical,Hinglish,0,0.9,14,3,1,5,0,0,val
