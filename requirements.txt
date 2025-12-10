@@ -12,3 +12,14 @@ joblib==1.3.2
 matplotlib==3.8.3
 seaborn==0.13.2
 pytest==8.2.0
+
+# Authentication & Security
+supabase==2.3.0
+psycopg2-binary==2.9.9
+
+# Email & SMS (optional)
+# smtplib is built-in
+# twilio==8.11.0 (uncomment if using SMS)
+
+# Environment management
+python-dotenv==1.0.0
