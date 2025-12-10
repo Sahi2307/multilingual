@@ -17,36 +17,12 @@ Tables (created on demand):
              language TEXT,
              location TEXT,
              status TEXT,
-             department_id INTEGER,
-             created_at TEXT,
-             updated_at TEXT,
-             FOREIGN KEY(user_id) REFERENCES users(id),
-             FOREIGN KEY(department_id) REFERENCES departments(id))
-* status_updates(id INTEGER PRIMARY KEY AUTOINCREMENT,
-                 complaint_id TEXT,
-                 status TEXT,
-                 remarks TEXT,
-                 official_id INTEGER,
-                 timestamp TEXT,
-                 FOREIGN KEY(complaint_id) REFERENCES complaints(id))
-* notifications(id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                message TEXT,
-                read INTEGER,
-                created_at TEXT,
-                FOREIGN KEY(user_id) REFERENCES users(id))
-* model_predictions(id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    complaint_id TEXT,
-                    category_prob TEXT,
-                    urgency_prob TEXT,
-                    shap_values TEXT,
-                    created_at TEXT,
-                    FOREIGN KEY(complaint_id) REFERENCES complaints(id))
 
 The schema is intentionally simple and uses TEXT-encoded JSON for
 probability vectors and SHAP summaries.
 """
 
+import bcrypt
 import json
 import logging
 import os
@@ -55,12 +31,18 @@ from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 DEFAULT_DB_RELATIVE = Path("data") / "civic_system.db"
 ENV_DB_PATH = "CIVIC_DB_PATH"
+
+# Database configuration
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'civic_complaints.db')
+SCHEMA_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'database_schema.sql')
 
 
 def _resolve_db_path(project_root: Optional[Path] = None) -> Path:
@@ -101,6 +83,7 @@ def get_connection(project_root: Optional[Path] = None) -> Generator[sqlite3.Con
     db_path = _resolve_db_path(project_root)
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
     try:
         yield conn
         conn.commit()
@@ -112,6 +95,105 @@ def get_connection(project_root: Optional[Path] = None) -> Generator[sqlite3.Con
         conn.close()
 
 
+def _ensure_default_admin(cur: sqlite3.Cursor) -> None:
+    """Ensure a default admin account exists.
+
+    The account uses the credentials specified in the project brief:
+    ``admin@civiccomplaints.gov`` / ``Admin@123``. The password is stored
+    as a bcrypt hash. In a real deployment this password must be changed
+    on first login.
+    """
+    email = "admin@civiccomplaints.gov"
+    cur.execute("SELECT id FROM users WHERE email = ?", (email,))
+    if cur.fetchone() is not None:
+        return
+
+    now = datetime.utcnow().isoformat()
+    password_hash = bcrypt.hashpw("Admin@123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    cur.execute(
+        """
+        INSERT INTO users(name, email, phone, password_hash, role, location, is_active, created_at)
+        VALUES(?,?,?,?,?,?,?,?)
+        """,
+        (
+            "System Administrator",
+            email,
+            "",
+            password_hash,
+            "admin",
+            "System",
+            1,
+            now,
+        ),
+    )
+
+
+def initialize_database() -> None:
+    """
+    Initialize the database with schema and default data.
+    Creates all tables and inserts default admin account and departments.
+    """
+    try:
+        # Create data directory if it doesn't exist
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+        
+        # Read and execute schema
+        with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
+            schema_sql = f.read()
+        
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Execute schema (split by semicolons for SQLite compatibility)
+            for statement in schema_sql.split(';'):
+                if statement.strip():
+                    try:
+                        cursor.execute(statement)
+                    except sqlite3.OperationalError as e:
+                        # Skip if table already exists
+                        if 'already exists' not in str(e):
+                            raise
+            
+            # Insert default departments
+            departments = [
+                ('Municipal Corporation - Water Supply', 'Water Supply', None, 'water@municipal.gov', '1800-111-001'),
+                ('Municipal Corporation - Sanitation', 'Sanitation', None, 'sanitation@municipal.gov', '1800-111-002'),
+                ('Municipal Corporation - Roads & Transport', 'Transportation', None, 'transport@municipal.gov', '1800-111-003')
+            ]
+            
+            for dept in departments:
+                cursor.execute("""
+                    INSERT OR IGNORE INTO departments (name, category, head_official_id, contact_email, contact_phone)
+                    VALUES (?, ?, ?, ?, ?)
+                """, dept)
+            
+            # Create default admin account
+            admin_password = "Admin@123"
+            password_hash = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            
+            cursor.execute("""
+                INSERT OR IGNORE INTO users (name, email, phone, password_hash, role, location, is_active, is_approved, must_change_password)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                'System Administrator',
+                'admin@civiccomplaints.gov',
+                '+919999999999',
+                password_hash,
+                'admin',
+                'Coimbatore',
+                True,
+                True,
+                True  # Force password change on first login
+            ))
+            
+            logger.info("Database initialized successfully")
+            logger.info("Default admin account created: admin@civiccomplaints.gov / Admin@123")
+            
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        raise
+
+
 def init_db(project_root: Optional[Path] = None) -> None:
     """Create all required tables if they do not already exist."""
     with get_connection(project_root) as conn:
@@ -121,11 +203,17 @@ def init_db(project_root: Optional[Path] = None) -> None:
             """
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                email TEXT UNIQUE,
+                name TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
                 phone TEXT,
-                role TEXT,
-                created_at TEXT
+                password_hash TEXT,
+                role TEXT NOT NULL DEFAULT 'citizen',
+                department_id INTEGER,
+                location TEXT,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                last_login TEXT,
+                FOREIGN KEY (department_id) REFERENCES departments(id)
             )
             """
         )
@@ -134,9 +222,14 @@ def init_db(project_root: Optional[Path] = None) -> None:
             """
             CREATE TABLE IF NOT EXISTS departments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                category TEXT,
-                officials TEXT
+                name TEXT NOT NULL,
+                category TEXT NOT NULL,
+                head_official_id INTEGER,
+                contact_email TEXT,
+                contact_phone TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                officials TEXT,
+                FOREIGN KEY (head_official_id) REFERENCES users(id)
             )
             """
         )
@@ -145,17 +238,23 @@ def init_db(project_root: Optional[Path] = None) -> None:
             """
             CREATE TABLE IF NOT EXISTS complaints (
                 id TEXT PRIMARY KEY,
-                user_id INTEGER,
-                text TEXT,
-                category TEXT,
-                urgency TEXT,
-                language TEXT,
+                user_id INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                category TEXT NOT NULL,
+                urgency TEXT NOT NULL,
+                language TEXT NOT NULL,
                 location TEXT,
-                status TEXT,
+                affected_population TEXT,
+                status TEXT DEFAULT 'registered',
+                assigned_to INTEGER,
                 department_id INTEGER,
-                created_at TEXT,
-                updated_at TEXT,
+                queue_position INTEGER,
+                estimated_resolution_date TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                resolved_at TEXT,
                 FOREIGN KEY(user_id) REFERENCES users(id),
+                FOREIGN KEY(assigned_to) REFERENCES users(id),
                 FOREIGN KEY(department_id) REFERENCES departments(id)
             )
             """
@@ -165,12 +264,14 @@ def init_db(project_root: Optional[Path] = None) -> None:
             """
             CREATE TABLE IF NOT EXISTS status_updates (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                complaint_id TEXT,
+                complaint_id TEXT NOT NULL,
+                old_status TEXT,
                 status TEXT,
                 remarks TEXT,
                 official_id INTEGER,
-                timestamp TEXT,
-                FOREIGN KEY(complaint_id) REFERENCES complaints(id)
+                timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(complaint_id) REFERENCES complaints(id),
+                FOREIGN KEY(official_id) REFERENCES users(id)
             )
             """
         )
@@ -179,11 +280,14 @@ def init_db(project_root: Optional[Path] = None) -> None:
             """
             CREATE TABLE IF NOT EXISTS notifications (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                message TEXT,
-                read INTEGER,
-                created_at TEXT,
-                FOREIGN KEY(user_id) REFERENCES users(id)
+                user_id INTEGER NOT NULL,
+                complaint_id TEXT,
+                message TEXT NOT NULL,
+                notification_type TEXT,
+                read INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id),
+                FOREIGN KEY(complaint_id) REFERENCES complaints(id)
             )
             """
         )
@@ -192,22 +296,62 @@ def init_db(project_root: Optional[Path] = None) -> None:
             """
             CREATE TABLE IF NOT EXISTS model_predictions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                complaint_id TEXT,
+                complaint_id TEXT NOT NULL,
                 category_prob TEXT,
                 urgency_prob TEXT,
                 shap_values TEXT,
-                created_at TEXT,
+                feature_vector TEXT,
+                processing_time REAL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(complaint_id) REFERENCES complaints(id)
             )
             """
         )
+
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                session_token TEXT UNIQUE NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                expires_at TEXT NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+            """
+        )
+
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS feedback (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                complaint_id TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                rating INTEGER CHECK(rating >= 1 AND rating <= 5),
+                comments TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(complaint_id) REFERENCES complaints(id),
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+            """
+        )
+
+        # Seed a default admin account for first-time setups. In production,
+        # the password should be changed immediately after deployment.
+        _ensure_default_admin(cur)
 
         logger.info("Database initialised at %s", _resolve_db_path(project_root))
 
 
 @dataclass
 class User:
-    """Simple user representation."""
+    """Simple user representation used in non-auth flows.
+
+    This mirrors a subset of columns from the ``users`` table. The
+    authentication subsystem exposes a richer user view including password
+    hashes and activation flags.
+    """
 
     id: int
     name: str
@@ -222,20 +366,39 @@ def get_or_create_user(
     email: str,
     phone: str,
     role: str = "citizen",
+    password: Optional[str] = None,
     project_root: Optional[Path] = None,
 ) -> User:
-    """Fetch a user by email or create if it does not exist."""
+    """Fetch a user by email or create if it does not exist.
+    
+    If password is not provided, a dummy hash is used (for auto-created users).
+    """
     now = datetime.utcnow().isoformat()
     with get_connection(project_root) as conn:
         cur = conn.cursor()
         cur.execute("SELECT * FROM users WHERE email = ?", (email,))
         row = cur.fetchone()
         if row is not None:
-            return User(**dict(row))  # type: ignore[arg-type]
+            data = dict(row)
+            return User(
+                id=int(data["id"]),
+                name=str(data.get("name", "")),
+                email=str(data.get("email", "")),
+                phone=str(data.get("phone", "")),
+                role=str(data.get("role", "citizen")),
+                created_at=str(data.get("created_at", "")),
+            )
+
+        # Generate password hash - use dummy hash for auto-created users
+        if password:
+            password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        else:
+            # Dummy hash for users created without password (e.g., auto-created from complaints)
+            password_hash = bcrypt.hashpw(b"dummy_auto_generated", bcrypt.gensalt()).decode()
 
         cur.execute(
-            "INSERT INTO users(name, email, phone, role, created_at) VALUES(?,?,?,?,?)",
-            (name, email, phone, role, now),
+            "INSERT INTO users(name, email, phone, role, password_hash, created_at) VALUES(?,?,?,?,?,?)",
+            (name, email, phone, role, password_hash, now),
         )
         user_id = int(cur.lastrowid)
         return User(id=user_id, name=name, email=email, phone=phone, role=role, created_at=now)
@@ -262,10 +425,10 @@ def insert_department(
         if row is not None:
             return int(row["id"])
 
-        officials_json = json.dumps(officials or [])
+        # Insert department with basic info (officials not stored in schema)
         cur.execute(
-            "INSERT INTO departments(name, category, officials) VALUES(?,?,?)",
-            (name, category, officials_json),
+            "INSERT INTO departments(name, category) VALUES(?,?)",
+            (name, category),
         )
         return int(cur.lastrowid)
 
@@ -298,7 +461,7 @@ def insert_complaint(
         cur.execute(
             """
             INSERT INTO complaints(
-                id, user_id, text, category, urgency, language, location,
+                complaint_id, user_id, text, category, urgency, language, location,
                 status, department_id, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
@@ -357,12 +520,19 @@ def insert_status_update(
     now = datetime.utcnow().isoformat()
     with get_connection(project_root) as conn:
         cur = conn.cursor()
+        # Get the integer id for the complaint from the complaint_id string
+        cur.execute("SELECT id FROM complaints WHERE complaint_id = ?", (complaint_id,))
+        row = cur.fetchone()
+        if not row:
+            raise ValueError(f"Complaint {complaint_id} not found")
+        complaint_row_id = row[0]
+        
         cur.execute(
-            "INSERT INTO status_updates(complaint_id, status, remarks, official_id, timestamp) VALUES(?,?,?,?,?)",
-            (complaint_id, status, remarks, official_id, now),
+            "INSERT INTO status_updates(complaint_id, new_status, remarks, updated_by, timestamp) VALUES(?,?,?,?,?)",
+            (complaint_row_id, status, remarks, official_id, now),
         )
         cur.execute(
-            "UPDATE complaints SET status = ?, updated_at = ? WHERE id = ?",
+            "UPDATE complaints SET status = ?, updated_at = ? WHERE complaint_id = ?",
             (status, now, complaint_id),
         )
 
@@ -392,7 +562,7 @@ def insert_notification(
     with get_connection(project_root) as conn:
         cur = conn.cursor()
         cur.execute(
-            "INSERT INTO notifications(user_id, message, read, created_at) VALUES(?,?,?,?)",
+            "INSERT INTO notifications(user_id, message, is_read, created_at) VALUES(?,?,?,?)",
             (user_id, message, 0, now),
         )
 
@@ -409,7 +579,7 @@ def list_notifications(
             cur.execute("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
         else:
             cur.execute(
-                "SELECT * FROM notifications WHERE user_id = ? AND read = 0 ORDER BY created_at DESC",
+                "SELECT * FROM notifications WHERE user_id = ? AND is_read = 0 ORDER BY created_at DESC",
                 (user_id,),
             )
         rows = cur.fetchall()
@@ -420,7 +590,7 @@ def mark_notifications_read(user_id: int, project_root: Optional[Path] = None) -
     """Mark all notifications for a user as read."""
     with get_connection(project_root) as conn:
         cur = conn.cursor()
-        cur.execute("UPDATE notifications SET read = 1 WHERE user_id = ?", (user_id,))
+        cur.execute("UPDATE notifications SET is_read = 1 WHERE user_id = ?", (user_id,))
 
 
 def insert_model_prediction(
@@ -434,20 +604,135 @@ def insert_model_prediction(
     now = datetime.utcnow().isoformat()
     with get_connection(project_root) as conn:
         cur = conn.cursor()
+        # Get the integer id for the complaint from the complaint_id string
+        cur.execute("SELECT id FROM complaints WHERE complaint_id = ?", (complaint_id,))
+        row = cur.fetchone()
+        if not row:
+            raise ValueError(f"Complaint {complaint_id} not found")
+        complaint_row_id = row[0]
+        
+        # Extract category and urgency predictions
+        category_predicted = max(category_prob, key=category_prob.get) if category_prob else None
+        category_confidence = max(category_prob.values()) if category_prob else 0.0
+        urgency_predicted = max(urgency_prob, key=urgency_prob.get) if urgency_prob else None
+        urgency_confidence = max(urgency_prob.values()) if urgency_prob else 0.0
+        
         cur.execute(
             """
             INSERT INTO model_predictions(
-                complaint_id, category_prob, urgency_prob, shap_values, created_at
-            ) VALUES (?,?,?,?,?)
+                complaint_id, category_predicted, category_confidence, 
+                category_probabilities, urgency_predicted, urgency_confidence, 
+                urgency_probabilities, shap_values, timestamp
+            ) VALUES (?,?,?,?,?,?,?,?,?)
             """,
             (
-                complaint_id,
+                complaint_row_id,
+                category_predicted,
+                category_confidence,
                 json.dumps(category_prob),
+                urgency_predicted,
+                urgency_confidence,
                 json.dumps(urgency_prob),
                 json.dumps(shap_summary),
                 now,
             ),
         )
+
+
+def execute_query(query: str, params: Tuple = (), fetch: str = None) -> Optional[List[Dict]]:
+    """
+    Execute a SQL query with parameters.
+    
+    Args:
+        query (str): SQL query string
+        params (Tuple): Query parameters
+        fetch (str): Fetch mode - 'one', 'all', or None for non-SELECT queries
+    
+    Returns:
+        Optional[List[Dict]]: Query results as list of dictionaries, or None
+    """
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            
+            if fetch == 'one':
+                row = cursor.fetchone()
+                return dict(row) if row else None
+            elif fetch == 'all':
+                rows = cursor.fetchall()
+                return [dict(row) for row in rows]
+            else:
+                return None
+    except Exception as e:
+        logger.error(f"Query execution error: {e}")
+        raise
+
+
+def insert_record(table: str, data: Dict[str, Any]) -> Optional[int]:
+    """
+    Insert a record into specified table.
+    
+    Args:
+        table (str): Table name
+        data (Dict): Column-value pairs
+    
+    Returns:
+        Optional[int]: ID of inserted record, or None on failure
+    """
+    try:
+        columns = ', '.join(data.keys())
+        placeholders = ', '.join(['?' for _ in data])
+        query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
+        
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, tuple(data.values()))
+            return cursor.lastrowid
+    except Exception as e:
+        logger.error(f"Insert error in {table}: {e}")
+        raise
+
+
+def update_record(table: str, record_id: int, data: Dict[str, Any]) -> bool:
+    """
+    Update a record in specified table.
+    
+    Args:
+        table (str): Table name
+        record_id (int): Record ID to update
+        data (Dict): Column-value pairs to update
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        set_clause = ', '.join([f"{k} = ?" for k in data.keys()])
+        query = f"UPDATE {table} SET {set_clause} WHERE id = ?"
+        
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, tuple(data.values()) + (record_id,))
+            return cursor.rowcount > 0
+    except Exception as e:
+        logger.error(f"Update error in {table}: {e}")
+        raise
+
+
+def cleanup_expired_sessions() -> None:
+    """Remove expired sessions from database."""
+    try:
+        query = "DELETE FROM sessions WHERE expires_at < ? OR is_active = FALSE"
+        execute_query(query, (datetime.now(),))
+        logger.info("Expired sessions cleaned up")
+    except Exception as e:
+        logger.error(f"Session cleanup error: {e}")
+
+
+# Initialize database on module import
+if not os.path.exists(DB_PATH):
+    logger.info("Database not found. Initializing...")
+    initialize_database()
 
 
 __all__ = [

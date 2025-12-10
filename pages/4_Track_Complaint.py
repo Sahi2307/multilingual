@@ -6,6 +6,14 @@ import pandas as pd
 import streamlit as st
 
 from utils.database import get_complaint, list_status_updates_for_complaint, init_db
+from utils.ui import apply_global_styles, init_sidebar_language_selector, render_footer, check_citizen_access
+
+
+# Initialize language selector in sidebar
+init_sidebar_language_selector()
+
+# Check citizen access
+check_citizen_access()
 
 
 TRACK_LABELS = {
@@ -76,7 +84,7 @@ T = TRACK_LABELS.get(current_lang, TRACK_LABELS["English"])
 
 st.title(T["title"])
 apply_global_styles()
-st.title("Track Complaint")
+
 
 root = Path(__file__).resolve().parents[1]
 data_path = root / "data" / "civic_complaints.csv"

@@ -1,36 +1,19 @@
 from __future__ import annotations
 
-"""Data preparation for the Explainable Multilingual Civic Complaint System.
-
-This module generates a synthetic dataset of 200 civic complaints across
-three categories (Sanitation, Water Supply, Transportation), three
-languages (English, Hindi, Hinglish), and four urgency levels
-(Critical, High, Medium, Low).
-
-It also performs:
-  * Text cleaning with basic PII removal while preserving Devanagari.
-  * Simple rule-based language detection (English/Hindi/Hinglish).
-  * Structured feature construction for 8-dimensional meta-features.
-  * Stratified train/validation/test splitting (70/15/15).
-
-The final CSV is saved to ``data/civic_complaints.csv`` and includes:
-  * complaint_id, text, category, urgency, language
-  * all 8 structured features
-  * split (train/val/test)
-
-Run as a script:
-    python -m src.data_preparation
+"""Data preparation module for civic complaint system.
+Generates synthetic multilingual complaints and prepares training data.
 """
 
 import logging
 import random
 import re
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.model_selection import StratifiedShuffleSplit, train_test_split
 
 # -----------------------------------------------------------------------------
 # Configuration
@@ -533,13 +516,29 @@ def build_and_save_dataset() -> pd.DataFrame:
     # Stratified split
     df = stratified_split(df)
 
+    # Add cleaned_text column (text is already cleaned above but keep explicit column for training scripts)
+    df["cleaned_text"] = df["text"]
+
+    # Save split CSVs expected by training scripts
+    train_df = df[df["split"] == "train"].reset_index(drop=True)
+    val_df = df[df["split"] == "val"].reset_index(drop=True)
+    test_df = df[df["split"] == "test"].reset_index(drop=True)
+
+    train_path = data_dir / "train.csv"
+    val_path = data_dir / "val.csv"
+    test_path = data_dir / "test.csv"
+
+    train_df.to_csv(train_path, index=False)
+    val_df.to_csv(val_path, index=False)
+    test_df.to_csv(test_path, index=False)
+    logger.info("Saved split datasets to %s, %s, %s", train_path, val_path, test_path)
+
     # Final processed dataset
     final_path = data_dir / "civic_complaints.csv"
     df.to_csv(final_path, index=False)
     logger.info("Saved processed dataset with splits to %s", final_path)
 
     return df
-
 
 def main() -> None:
     """CLI entry-point for data preparation."""

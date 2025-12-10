@@ -9,8 +9,13 @@ import streamlit as st
 
 from src.complaint_processor import ComplaintProcessor
 from utils.database import get_connection, init_db
-from utils.ui import apply_global_styles, render_footer
+from utils.ui import apply_global_styles, init_sidebar_language_selector, render_footer, check_admin_access
 
+
+# Initialize language selector in sidebar
+init_sidebar_language_selector()
+# Check admin access
+check_admin_access()
 
 apply_global_styles()
 current_lang = st.session_state.get("language", "English")

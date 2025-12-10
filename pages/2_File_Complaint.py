@@ -12,7 +12,14 @@ import shap
 import streamlit as st
 
 from src.complaint_processor import ComplaintProcessor, ProcessedComplaintResult
-from utils.ui import apply_global_styles, render_footer
+from utils.ui import apply_global_styles, init_sidebar_language_selector, render_footer, check_citizen_access
+
+
+# Initialize language selector in sidebar
+init_sidebar_language_selector()
+
+# Check citizen access
+check_citizen_access()
 
 
 @st.cache_resource
@@ -159,16 +166,6 @@ st.markdown(
 )
 
 st.markdown(f"<h1 class='file-section-title'>{labels['title']}</h1>", unsafe_allow_html=True)
-col_lang, _ = st.columns([1, 3])
-with col_lang:
-    lang = st.selectbox(
-        labels["lang_label"],
-        options=["English", "Hindi", "Hinglish"],
-        index=["English", "Hindi", "Hinglish"].index(current_lang),
-    )
-    st.session_state["language"] = lang
-    current_lang = lang
-    labels = LABELS.get(current_lang, LABELS["English"])
 
 st.markdown("---")
 
@@ -177,32 +174,21 @@ st.subheader(labels["details"])
 with st.form("file_complaint_form", clear_on_submit=False):
     with st.container():
         st.markdown("<div class='file-card'>", unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        with c1:
-            name = st.text_input(labels["name"])
-            email = st.text_input(labels["email"])
-            phone = st.text_input(labels["phone"])
-            location = st.text_input(labels["location"])
-
-        with c2:
-            ui_category = st.selectbox(
-                labels["category_hint"],
-                ["Let AI decide", "Sanitation", "Water Supply", "Transportation"],
-            )
-            ui_language = st.selectbox(
-                labels["complaint_language"],
-                ["English", "Hindi", "Hinglish"],
-                index=["English", "Hindi", "Hinglish"].index(lang),
-            )
-            affected_label = st.selectbox(
-                labels["affected_population"],
-                [
-                    "Few individuals",
-                    "One street / lane",
-                    "Neighborhood / locality",
-                    "Large area / crowd",
-                ],
-            )
+        
+        ui_category = st.selectbox(
+            labels["category_hint"],
+            ["Let AI decide", "Sanitation", "Water Supply", "Transportation"],
+        )
+        
+        affected_label = st.selectbox(
+            labels["affected_population"],
+            [
+                "Few individuals",
+                "One street / lane",
+                "Neighborhood / locality",
+                "Large area / crowd",
+            ],
+        )
 
         complaint_text = st.text_area(
             labels["complaint_description"],
@@ -229,16 +215,25 @@ if submitted:
         st.error(labels["error_no_text"])
         st.stop()
 
+    # Get current user info from session
+    user_data = st.session_state.get("user", {})
+    user_name = user_data.get("name", "Anonymous")
+    user_email = user_data.get("email", "")
+    user_phone = user_data.get("phone", "")
+    
+    # Use language from session state
+    complaint_language = st.session_state.get("language", "English")
+
     processor = get_complaint_processor()
 
     with st.spinner(labels["spinner_main"]):
         result: ProcessedComplaintResult = processor.process_complaint(
-            name=name,
-            email=email,
-            phone=phone,
-            location=location,
+            name=user_name,
+            email=user_email,
+            phone=user_phone,
+            location="Not specified",
             complaint_text=complaint_text,
-            language=ui_language,
+            language=complaint_language,
             affected_label=affected_label,
             category_hint=None if ui_category == "Let AI decide" else ui_category,
         )
@@ -270,13 +265,13 @@ if submitted:
     st.markdown("---")
     st.subheader(labels["ai_expl"])
 
+    # Category Explanation with Simple Visualization
     with st.expander(labels["why_cat"], expanded=True):
-        highlighted_text = highlight_keywords(complaint_text, cat_exp.top_keywords)
-        st.markdown(highlighted_text)
-        st.caption(cat_exp.nl_explanation)
-
-        # Optional: simple bar chart of token importances for top keywords
-        top_tokens = [kw.strip() for kw in cat_exp.top_keywords if kw.strip()]
+        st.write(f"**Why {cat_exp.predicted_label}?**")
+        st.write("The AI found these important words in your complaint that helped decide it's a **{}** issue:".format(cat_exp.predicted_label))
+        
+        # Simple bar chart of top keywords
+        top_tokens = [kw.strip() for kw in cat_exp.top_keywords[:5] if kw.strip()]
         if top_tokens:
             token_to_val: Dict[str, float] = {}
             for item in cat_exp.token_importances:
@@ -285,69 +280,27 @@ if submitted:
                     token_to_val[tok] = abs(float(item["value"]))
             if token_to_val:
                 token_df = (
-                    pd.DataFrame({"token": list(token_to_val.keys()), "importance": list(token_to_val.values())})
-                    .sort_values("importance", ascending=False)
+                    pd.DataFrame({"Word": list(token_to_val.keys()), "Importance": list(token_to_val.values())})
+                    .sort_values("Importance", ascending=True)
                 )
-                st.bar_chart(token_df.set_index("token"))
+                st.bar_chart(token_df.set_index("Word"))
 
+    # Urgency Explanation with Simple Visualization
     with st.expander(labels["why_pri"], expanded=True):
+        st.write(f"**Why {urg_exp.predicted_label} urgency?**")
+        st.write("Here's what factors made the AI decide this complaint needs **{}** priority:".format(urg_exp.predicted_label))
+        
+        # Simple bar chart of factor importance
         factors_df = pd.DataFrame(
             {
-                "factor": list(urg_exp.factor_importance.keys()),
-                "importance": list(urg_exp.factor_importance.values()),
+                "Factor": list(urg_exp.factor_importance.keys()),
+                "Importance (%)": list(urg_exp.factor_importance.values()),
             }
-        ).sort_values("importance", ascending=False)
+        ).sort_values("Importance (%)", ascending=True)
 
-        st.bar_chart(factors_df.set_index("factor"))
-        st.caption(urg_exp.nl_explanation)
-
-        # SHAP waterfall plot for aggregated urgency factors
-        st.markdown("#### SHAP waterfall plot (urgency factors)")
-    feature_names = list(urg_exp.feature_contributions.keys())
-    values = np.array([urg_exp.feature_contributions[name] for name in feature_names], dtype=float)
-
-    # Use 0 for text_embedding "data" and the actual structured values for others
-    data_values = []
-    for name in feature_names:
-        if name == "text_embedding":
-            data_values.append(0.0)
-        else:
-            data_values.append(float(urg_exp.structured_features.get(name, 0.0)))
-    data_arr = np.array(data_values, dtype=float)
-
-    exp = shap.Explanation(
-        values=values,
-        base_values=urg_exp.expected_value,
-        data=data_arr,
-        feature_names=feature_names,
-    )
-
-    # Waterfall plot summarising how each factor pushes the urgency
-    # prediction higher or lower relative to the expected value.
-    fig, ax = plt.subplots(figsize=(6, 4))
-    shap.plots.waterfall(exp, max_display=9, show=False)
-    st.pyplot(fig, clear_figure=True)
-
-    # Optional SHAP force plot (single prediction) to visualise positive vs
-    # negative contributions in a compact horizontal bar layout. We use the
-    # legacy ``force_plot`` API with ``matplotlib=True`` so it renders as a
-    # static image inside Streamlit.
-    st.markdown("#### SHAP force plot (urgency factors)")
-    fig_force = plt.figure(figsize=(6, 1.5))
-    shap.force_plot(
-        exp.base_values,
-        exp.values,
-        exp.data,
-        feature_names=feature_names,
-        matplotlib=True,
-        show=False,
-    )
-    st.pyplot(fig_force, clear_figure=True)
-
-    st.info(
-        "These explanations are generated using SHAP (SHapley Additive Explanations) "
-        "to show how different words and factors influenced the AI decisions."
-    )
+        st.bar_chart(factors_df.set_index("Factor"))
+        
+        st.caption("📌 " + urg_exp.nl_explanation)
 
 # Shared footer
 render_footer()

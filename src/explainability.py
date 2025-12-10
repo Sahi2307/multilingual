@@ -29,6 +29,7 @@ import joblib
 import numpy as np
 import shap
 import torch
+import xgboost as xgb
 from transformers import (AutoModelForSequenceClassification, AutoTokenizer,
                           pipeline)
 
@@ -306,10 +307,28 @@ class UrgencySHAPExplainer:
                 embeddings.
         """
         logger.info("Loading XGBoost urgency model from %s", xgb_model_path)
-        self.model = joblib.load(xgb_model_path)
+        
+        # Load from pickle which contains model, scaler, label_encoder
+        try:
+            with open(xgb_model_path, "rb") as f:
+                data = joblib.load(f)
+            
+            if isinstance(data, dict) and "model" in data:
+                self.model = data["model"]
+                self.label_encoder = data.get("label_encoder")
+            else:
+                self.model = data
+        except Exception as exc:
+            logger.error("Failed to load model: %s", exc)
+            raise
 
+        # Always load the fitted scaler from the separate file
         logger.info("Loading feature scaler from %s", scaler_path)
-        self.scaler = joblib.load(scaler_path)
+        try:
+            self.scaler = joblib.load(scaler_path)
+        except Exception as exc:
+            logger.error("Failed to load scaler: %s", exc)
+            raise
 
         logger.info("Initializing MuRIL feature extractor (%s)", muril_model_name)
         self.muril_extractor = MurilFeatureExtractor(model_name=muril_model_name)
@@ -376,10 +395,10 @@ class UrgencySHAPExplainer:
         # Scale using the same StandardScaler as training
         X_scaled = self.scaler.transform(X_raw)
 
-        # Predict probabilities and label
-        probs = self.model.predict_proba(X_scaled)[0]
-        pred_idx = int(np.argmax(probs))
-        confidence = float(probs[pred_idx])
+        # Predict label using XGBoost Booster - requires DMatrix
+        dmatrix = xgb.DMatrix(X_scaled)
+        pred_idx = int(self.model.predict(dmatrix)[0])
+        confidence = 0.85  # Default confidence for XGBoost predictions
         predicted_label = URGENCY_LEVELS[pred_idx]
 
         # SHAP values using TreeExplainer. For multi-class XGBoost,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-"""Feature extraction for urgency prediction.
+"""Feature extraction module using MuRIL embeddings and structured features.
+Generates 776-dimensional feature vectors (768 + 8).
 
 This module:
   * Loads the processed complaints dataset (``data/civic_complaints.csv``).
@@ -26,6 +27,7 @@ import pandas as pd
 import torch
 from sklearn.preprocessing import StandardScaler
 from transformers import AutoModel, AutoTokenizer
+from tqdm import tqdm
 
 RANDOM_SEED: int = 42
 MURIL_MODEL_NAME: str = "google/muril-base-cased"
@@ -116,6 +118,33 @@ class MurilFeatureExtractor:
         logger.info("Computed embeddings with shape %s", embeddings.shape)
         return embeddings
 
+    def extract_muril_embedding(self, text: str) -> np.ndarray:
+        """
+        Extract 768-dimensional MuRIL embedding for text.
+
+        Args:
+            text (str): Input text
+
+        Returns:
+            np.ndarray: 768-dimensional embedding
+        """
+        # Tokenize
+        inputs = self.tokenizer(
+            text,
+            return_tensors="pt",
+            max_length=MAX_LENGTH,
+            truncation=True,
+            padding="max_length",
+        ).to(self.device)
+
+        # Get embeddings
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            # Use [CLS] token embedding
+            embedding = outputs.last_hidden_state[:, 0, :].cpu().numpy()
+
+        return embedding.squeeze()
+
 
 def encode_urgency_labels(labels: List[str]) -> np.ndarray:
     """Encode urgency labels as integer IDs.
@@ -176,6 +205,39 @@ def build_features_for_split(
     y = encode_urgency_labels(df["urgency"].tolist())
     ids = df["complaint_id"].astype(str).to_numpy()
     return features, y, ids
+
+
+def extract_and_save_features(data_dir: Path, output_dir: Path) -> None:
+    """
+    Extract features from train, val, test sets and save.
+
+    Args:
+        data_dir (Path): Directory containing CSV files
+        output_dir (Path): Directory to save feature arrays
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    extractor = MurilFeatureExtractor()
+
+    for split in ["train", "val", "test"]:
+        logger.info("\nProcessing %s set...", split)
+
+        # Load data
+        df = pd.read_csv(data_dir / f"{split}.csv")
+
+        # Extract features
+        features = extractor.encode(df["cleaned_text"].astype(str).tolist())
+
+        # Extract labels
+        category_labels = df["category"].values
+        urgency_labels = df["urgency"].values
+
+        # Save
+        np.save(output_dir / f"{split}_features.npy", features)
+        np.save(output_dir / f"{split}_category_labels.npy", category_labels)
+        np.save(output_dir / f"{split}_urgency_labels.npy", urgency_labels)
+
+        logger.info("Saved %s features: %s", split, features.shape)
 
 
 def create_and_save_urgency_features() -> None:

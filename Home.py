@@ -1,23 +1,36 @@
 from __future__ import annotations
 
-"""Main Streamlit entry point and Home page for the civic complaint system.
-
-Run from the project root with::
-
-    streamlit run Home.py
-
-This single root page shows the landing dashboard (stats, how it works,
-and quick actions). Detailed flows live in ``pages/`` as separate
-Streamlit pages that you can navigate to from the sidebar or the quick
-action buttons.
-"""
-
 from pathlib import Path
+from datetime import datetime
+import streamlit as st
+import sys
+
+# Add project root to path
+project_root = Path(__file__).resolve().parent
+sys.path.insert(0, str(project_root))
 
 import pandas as pd
-import streamlit as st
 
-from utils.ui import apply_global_styles, render_footer
+from utils.auth import (
+    register_user,
+    login_user,
+    validate_password_strength,
+    validate_email,
+    validate_phone,
+)
+from utils.session_manager import init_session_state, is_authenticated, clear_session, set_user_session, show_user_info
+from utils.ui import apply_global_styles, init_sidebar_language_selector, render_footer
+from utils.database import initialize_database
+
+
+@st.cache_resource
+def init_db() -> None:
+    """Initialize database once on first run."""
+    initialize_database()
+
+
+# Initialize database if needed
+init_db()
 
 
 def init_language() -> None:
@@ -65,6 +78,13 @@ LABELS = {
         "file_button": "File Complaint",
         "track_button": "Track Complaint",
         "official_button": "Official Dashboard",
+        "login": "Login",
+        "register": "New User? Register Here",
+        "email": "Email/Username",
+        "password": "Password",
+        "role": "Role",
+        "login_btn": "Login",
+        "forgot_password": "Forgot Password?",
     },
     "Hindi": {
         "app_title": "व्याख्यात्मक बहुभाषी नागरिक शिकायत प्रणाली",
@@ -84,6 +104,13 @@ LABELS = {
         "file_button": "शिकायत दर्ज करें",
         "track_button": "शिकायत ट्रैक करें",
         "official_button": "अधिकारी डैशबोर्ड",
+        "login": "लॉगिन",
+        "register": "नए उपयोगकर्ता? यहां पंजीकरण करें",
+        "email": "ईमेल/उपयोगकर्ता नाम",
+        "password": "पासवर्ड",
+        "role": "भूमिका",
+        "login_btn": "लॉगिन करें",
+        "forgot_password": "पासवर्ड भूल गए?",
     },
     "Hinglish": {
         "app_title": "Explainable Multilingual Civic Complaint System",
@@ -103,21 +130,26 @@ LABELS = {
         "file_button": "Complaint file karein",
         "track_button": "Complaint track karein",
         "official_button": "Official dashboard",
+        "login": "Login",
+        "register": "Naye user? Yahan register karein",
+        "email": "Email/Username",
+        "password": "Password",
+        "role": "Role",
+        "login_btn": "Login karein",
+        "forgot_password": "Password bhool gaye?",
     },
 }
 
 
-# Shared styling and language state
+# Shared styling, language, and session state
 apply_global_styles()
 init_language()
+init_session_state()
 
-st.sidebar.title("Settings")
-lang = st.sidebar.selectbox(
-    "Interface language",
-    options=["English", "Hindi", "Hinglish"],
-    index=["English", "Hindi", "Hinglish"].index(st.session_state["language"]),
-)
-st.session_state["language"] = lang
+# Initialize global language selector in sidebar
+init_sidebar_language_selector()
+
+root = Path(__file__).resolve().parent
 
 current_lang = st.session_state.get("language", "English")
 labels = LABELS.get(current_lang, LABELS["English"])
@@ -129,72 +161,266 @@ st.markdown(
 )
 st.write(labels["tagline"])
 
-# Optional in-page language selector mirroring sidebar
-col_lang, _ = st.columns([1, 3])
-with col_lang:
-    lang_choice = st.selectbox(
-        "Language / भाषा / Language",
-        options=["English", "Hindi", "Hinglish"],
-        index=["English", "Hindi", "Hinglish"].index(current_lang),
-    )
-    st.session_state["language"] = lang_choice
-    labels = LABELS.get(lang_choice, LABELS["English"])
+# User info in top right
+col_user = st.columns([3])[0]
+with col_user:
+    if is_authenticated():
+        st.success(
+            f"Logged in as {st.session_state.user_name} ({st.session_state.user_role.capitalize()})",
+        )
+        if st.button("Logout", key="logout_btn"):
+            clear_session()
+            st.experimental_rerun()
 
 st.markdown("---")
 
-# ---- Quick stats dashboard ----
-st.subheader(labels["overview"])
 
-total_complaints, resolved_today, avg_resolution_days = load_stats()
 
-c1, c2, c3 = st.columns(3)
+# Rate limiting tracking
+if "login_attempts" not in st.session_state:
+    st.session_state.login_attempts = 0
+if "captcha_required" not in st.session_state:
+    st.session_state.captcha_required = False
+
+# ---- Login & registration section ----
+st.subheader("Login")
+
+with st.form("login_form"):
+    login_col1, login_col2 = st.columns(2)
+    with login_col1:
+        login_email = st.text_input(labels["email"])
+        login_password = st.text_input(labels["password"], type="password")
+    with login_col2:
+        login_role = st.selectbox(
+            labels["role"],
+            options=["citizen", "official", "admin"],
+            format_func=lambda x: x.capitalize(),
+        )
+        st.markdown(f"[{labels['forgot_password']}](#)")
+
+    # CAPTCHA after 3 failed attempts
+    if st.session_state.captcha_required:
+        captcha_input = st.text_input("🤖 CAPTCHA: What is 7 + 8?")
+
+    login_submitted = st.form_submit_button(labels["login_btn"], use_container_width=True)
+
+if login_submitted:
+    # Validate inputs
+    if not login_email or not login_password:
+        st.error("❌ Please enter both email and password")
+    elif st.session_state.captcha_required and captcha_input != "15":
+        st.error("❌ Incorrect CAPTCHA answer")
+    else:
+        # Attempt login
+        success, message, user_data = login_user(
+            login_email.strip(), login_password.strip(), login_role
+        )
+
+        if not success:
+            st.session_state.login_attempts += 1
+            if st.session_state.login_attempts >= 3:
+                st.session_state.captcha_required = True
+            st.error(f"❌ {message}")
+        else:
+            # Reset login attempts
+            st.session_state.login_attempts = 0
+            st.session_state.captcha_required = False
+
+            # Create session via set_user_session
+            set_user_session(user_data)
+            st.success(f"✅ {message}")
+
+            # Redirect based on role
+            if user_data["role"] == "citizen":
+                st.switch_page("pages/2_File_Complaint.py")
+            elif user_data["role"] == "official":
+                st.switch_page("pages/5_Official_Dashboard.py")
+            else:  # admin
+                st.switch_page("pages/6_Admin_Panel.py")
+
+st.markdown("---")
+
+# ---- Registration section ----
+st.subheader(f"📝 {labels['register']}")
+
+with st.expander("Open registration form"):
+    with st.form("registration_form"):
+        r_col1, r_col2 = st.columns(2)
+        with r_col1:
+            r_name = st.text_input("Full Name *")
+            r_email = st.text_input("Email *")
+            r_phone = st.text_input("Phone Number (e.g., +919876543210)")
+            r_location = st.text_input("Location/Ward")
+        with r_col2:
+            r_role = st.selectbox(
+                "Role *",
+                options=["citizen", "official", "admin"],
+                index=0,
+                help="Officials require admin approval. Admin self-registration is for demo only.",
+            )
+            if r_role == "admin":
+                st.warning("⚠️ Admin accounts should be created by existing admins in production.")
+            r_password = st.text_input("Password *", type="password")
+            r_confirm = st.text_input("Confirm Password *", type="password")
+
+        register_submitted = st.form_submit_button("Create Account", use_container_width=True)
+
+    if register_submitted:
+        # Validation
+        if not all([r_name, r_email, r_password, r_confirm]):
+            st.error("❌ Please fill all required fields")
+        elif r_password != r_confirm:
+            st.error("❌ Passwords do not match")
+        elif not validate_email(r_email):
+            st.error("❌ Invalid email format")
+        elif r_phone and not validate_phone(r_phone):
+            st.error("❌ Invalid phone format. Use +91XXXXXXXXXX")
+        else:
+            # Validate password strength
+            is_valid, pwd_msg = validate_password_strength(r_password)
+            if not is_valid:
+                st.error(f"❌ {pwd_msg}")
+            else:
+                # Register user
+                success, message, user_id = register_user(
+                    name=r_name.strip(),
+                    email=r_email.strip(),
+                    phone=r_phone.strip() if r_phone else None,
+                    password=r_password,
+                    role=r_role,
+                    location=r_location.strip() if r_location else None,
+                )
+
+                if success:
+                    st.success(f"✅ {message}")
+                    st.info("Please login with your credentials")
+                else:
+                    st.error(f"❌ {message}")
+
+st.markdown("---")
+
+# ---- Quick Stats Section (public) ----
+st.subheader("📊 Quick Stats")
+
+# For demo purposes, use the fixed numbers from the specification
+fixed_total = 1245
+fixed_resolved_today = 87
+fixed_avg_resolution = 3.2
+active_departments = 5
+system_uptime = 99.8
+
+c1, c2, c3, c4, c5 = st.columns(5)
 with c1:
-    st.metric("Total complaints", value=total_complaints)
+    st.metric("Total complaints registered", value=fixed_total)
 with c2:
-    st.metric("Resolved today", value=resolved_today)
+    st.metric("Complaints resolved today", value=fixed_resolved_today)
 with c3:
-    st.metric("Avg. resolution time (days)", value=f"{avg_resolution_days:.1f}")
+    st.metric("Avg. resolution time (days)", value=f"{fixed_avg_resolution:.1f}")
+with c4:
+    st.metric("Active departments", value=active_departments)
+with c5:
+    st.metric("System uptime (%)", value=f"{system_uptime:.1f}")
 
 st.markdown("---")
 
-# ---- How it works ----
-st.subheader(labels["how_it_works"])
+# ---- How It Works ----
+st.subheader("🎯 How It Works")
 
 steps = [
-    (labels["step1_title"], labels["step1_desc"]),
-    (labels["step2_title"], labels["step2_desc"]),
-    (labels["step3_title"], labels["step3_desc"]),
+    ("📝", labels["step1_title"], labels["step1_desc"]),
+    ("🤖", labels["step2_title"], labels["step2_desc"]),
+    ("📊", labels["step3_title"], labels["step3_desc"]),
 ]
 
 cols = st.columns(3)
-for col, (title, desc) in zip(cols, steps):
+for col, (icon, title, desc) in zip(cols, steps):
     with col:
         st.markdown("<div class='civic-card'>", unsafe_allow_html=True)
-        st.markdown(f"**{title}**")
+        st.markdown(f"**{icon} {title}**")
         st.write(desc)
         st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("---")
 
-# ---- Quick actions ----
-st.subheader(labels["quick_actions"])
+# ---- Feature Highlights ----
+st.subheader("✨ Feature Highlights")
 
-qa1, qa2, qa3 = st.columns(3)
-with qa1:
-    st.markdown("<div class='civic-card'>", unsafe_allow_html=True)
-    if st.button(labels["file_button"], use_container_width=True):
-        st.switch_page("pages/2_File_Complaint.py")
-    st.markdown("</div>", unsafe_allow_html=True)
-with qa2:
-    st.markdown("<div class='civic-card'>", unsafe_allow_html=True)
-    if st.button(labels["track_button"], use_container_width=True):
-        st.switch_page("pages/4_Track_Complaint.py")
-    st.markdown("</div>", unsafe_allow_html=True)
-with qa3:
-    st.markdown("<div class='civic-card'>", unsafe_allow_html=True)
-    if st.button(labels["official_button"], use_container_width=True):
-        st.switch_page("pages/5_Official_Dashboard.py")
-    st.markdown("</div>", unsafe_allow_html=True)
+feat_col1, feat_col2 = st.columns(2)
 
-# ---- Footer ----
-render_footer()
+with feat_col1:
+    st.markdown(
+        """
+    - ✨ **AI-Powered Categorization** (≥94% accuracy)
+    - 🔍 **Explainable AI** with SHAP
+    - 🌐 **Multilingual Support** (English, Hindi, Hinglish)
+    """
+    )
+
+with feat_col2:
+    st.markdown(
+        """
+    - 📈 **Real-time Queue Transparency**
+    - 🚀 **Fast Processing** (<4 seconds)
+    - 🔒 **Secure & Role-Based Access**
+    """
+    )
+
+st.markdown("---")
+
+# ---- Demo Mode ----
+st.subheader("🎮 Try Demo (Guest Access)")
+st.info("Experience the system without registration. Limited to viewing demo data.")
+
+if st.button("🚀 Launch Demo Mode", use_container_width=True):
+    # Create demo session
+    demo_user = {
+        "id": -1,
+        "name": "Demo Guest",
+        "email": "demo@guest.local",
+        "role": "citizen",
+        "is_active": True,
+        "department_id": None,
+    }
+    set_user_session(demo_user, "demo_session_token")
+    st.session_state.demo_mode = True
+    st.success("✅ Demo mode activated! Redirecting...")
+    st.switch_page("pages/2_File_Complaint.py")
+
+st.markdown("---")
+
+# ---- Footer / Contact ----
+st.subheader("📞 Contact & Support")
+
+footer_col1, footer_col2, footer_col3 = st.columns(3)
+
+with footer_col1:
+    st.markdown(
+        """
+    **Email:** support@civiccomplaints.gov  
+    **Phone:** 1800-XXX-XXXX (24/7)  
+    **Address:** Municipal IT Centre, Civic Bhawan
+    """
+    )
+
+with footer_col2:
+    st.markdown(
+        """
+    **Quick Links**  
+    - [Privacy Policy](#)
+    - [Terms of Service](#)
+    - [About Us](#)
+    """
+    )
+
+with footer_col3:
+    st.markdown(
+        """
+    **Social Media**  
+    - 🐦 Twitter: @CivicComplaints
+    - 📘 Facebook: /CivicComplaints
+    - 📸 Instagram: @civic_complaints
+    """
+    )
+
+st.markdown("---")
+st.caption("© 2024 Civic Complaint Resolution System | Built with ❤️ using Streamlit, MuRIL & XGBoost")

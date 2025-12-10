@@ -7,25 +7,75 @@ env/
 __pycache__/
 *.py[cod]
 *.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
 # Pytest
 .pytest_cache/
+.coverage
+htmlcov/
 
 # IDEs
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+.windows-build-tools/
 
 # Logs
 *.log
+logs/
 
 # Environment
 .env
+.env.local
+.env.*.local
 
-# Large artifacts (can be regenerated)
-models/
+# Streamlit
+.streamlit/
+.streamlit/secrets.toml
+streamlit_cache/
+.streamlit_cache/
+
+# Database (use pre-initialized or generate locally)
+*.db
+*.sqlite
+*.sqlite3
+data/civic_complaints.db
+
+# Large model artifacts (pre-trained models included, regenerate if needed)
+models/*.pkl
+models/*.joblib
+models/xgboost_urgency_predictor.json
+models/muril_category_classifier/
+
+# Generated data (can be regenerated)
 data/raw/
 data/processed/
+data/civic_complaints.csv
+*.npz
+
+# Temporary files
+*.tmp
+*.bak

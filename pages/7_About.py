@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import streamlit as st
 
-from utils.ui import apply_global_styles, render_footer
+from utils.ui import apply_global_styles, init_sidebar_language_selector, render_footer, check_citizen_access
+
+
+# Initialize language selector in sidebar
+init_sidebar_language_selector()
+
+# Check citizen access
+check_citizen_access()
 
 ABOUT_LABELS = {
     "English": {

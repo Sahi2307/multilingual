@@ -1,5 +1,141 @@
 # Explainable Multilingual Civic Complaint Resolution System
 
+A comprehensive AI-powered civic complaint management system with multilingual support (English, Hindi, Hinglish) and explainable AI using SHAP.
+
+## 🎯 Features
+
+- **Multilingual Support**: Accept complaints in English, Hindi, and Hinglish
+- **AI-Powered Classification**: MuRIL for category classification (≥94% accuracy)
+- **Urgency Prediction**: XGBoost for 4-level urgency prediction (≥89% accuracy)
+- **Explainable AI**: SHAP-based natural-language explanations for all predictions
+- **Role-Based Access Control**: Separate pages for Citizens, Officials, and Admins
+  - Citizens: File, track, and view complaints
+  - Officials: Manage complaints, update status
+  - Admins: System analytics and settings
+- **Real-time Tracking**: Queue position and status updates
+- **Secure Authentication**: Password hashing, session management, multi-role support
+- **Interactive Dashboard**: Citizens, Officials, and Admin views with complaint analytics
+
+## 📋 System Requirements
+
+- Python 3.8+
+- 4GB+ RAM
+- CUDA-capable GPU (optional, for faster training)
+
+## 🚀 Quick Start
+
+### 1. Clone Repository
+
+```bash
+cd d:\Downloadss\Project\multilingual
+git clone <your-repo-url> civic-complaint-system
+cd civic-complaint-system
+```
+
+### 2. Create Virtual Environment
+
+```bash
+python -m venv venv
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/Mac
+```
+
+### 3. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Initialize Database
+
+```bash
+python -c "from utils.database import initialize_database; initialize_database()"
+```
+
+This creates:
+- SQLite database at `data/civic_complaints.db`
+- Default admin account: `admin@civiccomplaints.gov` / `Admin@123`
+
+### 5. Generate Training Data
+
+```bash
+python src/data_preparation.py
+```
+
+This generates 200 synthetic complaints distributed across:
+- Categories: Water Supply (67), Sanitation (66), Transportation (67)
+- Urgency: Critical (20), High (60), Medium (80), Low (40)
+- Languages: Hindi (80), English (60), Hinglish (60)
+
+### 6. Extract Features
+
+```bash
+python src/feature_extraction.py
+```
+
+This extracts 776-dimensional features:
+- 768-dim MuRIL embeddings
+- 8-dim structured features
+
+### 7. Train Models
+
+**Category Model (MuRIL):**
+```bash
+python src/train_category_model.py
+```
+
+**Urgency Model (XGBoost):**
+```bash
+python src/train_urgency_model.py
+```
+
+### 8. Run Application
+
+```bash
+streamlit run Home.py
+```
+
+Access at: http://localhost:8501
+
+## 👥 Default Accounts
+
+### Admin Account
+- Email: `admin@civiccomplaints.gov`
+- Password: `Admin@123`
+- Role: Admin
+- **Note**: Change password on first login
+
+### Test Accounts (Create via registration)
+- **Citizens**: Self-register to file and track complaints
+- **Officials**: Request access; requires admin approval to manage complaints
+- **Admins**: Created by existing admins; access to system analytics and admin panel
+
+## 🔐 Access Control
+
+### Citizen Pages
+- ✅ Home (landing page)
+- ✅ File Complaint (pages/2_File_Complaint.py)
+- ✅ My Complaints (pages/3_My_Complaints.py)
+- ✅ Track Complaint (pages/4_Track_Complaint.py)
+- ✅ About (pages/7_About.py)
+- ❌ Cannot access Official Dashboard or Admin Panel
+
+### Official Pages
+- ✅ Official Dashboard (pages/5_Official_Dashboard.py)
+- ✅ View assigned complaints, update status, add remarks
+- ❌ Cannot access citizen complaint pages
+
+### Admin Pages
+- ✅ Admin Panel (pages/6_Admin_Panel.py)
+- ✅ System analytics, complaint trends, department statistics
+- ✅ Approve/manage official accounts
+- ❌ Cannot access citizen complaint pages
+
+## 📂 Project Structure
+
+````markdown
+# Explainable Multilingual Civic Complaint Resolution System
+
 This repository contains the implementation of a multilingual civic complaint management system using MuRIL (google/muril-base-cased) for category classification and XGBoost for urgency prediction.
 
 ## Phase 1: Data Preparation & Model Training
@@ -259,3 +395,4 @@ one complaint in under ~4 seconds on your local hardware.
 
 These later phases continue to build on the models and artifacts
 produced in Phase 1 and the explainability layer from Phase 2.
+````

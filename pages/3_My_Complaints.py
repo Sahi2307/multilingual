@@ -6,7 +6,14 @@ import pandas as pd
 import streamlit as st
 
 from utils.database import get_connection, init_db
-from utils.ui import apply_global_styles, render_footer
+from utils.ui import apply_global_styles, init_sidebar_language_selector, render_footer, check_citizen_access
+
+
+# Initialize language selector in sidebar
+init_sidebar_language_selector()
+
+# Check citizen access
+check_citizen_access()
 
 
 LANG_LABELS = {
@@ -87,39 +94,47 @@ data_path = root / "data" / "civic_complaints.csv"
 # Ensure DB schema exists
 init_db(root)
 
-st.subheader(L["identify"])
+# Check if user is logged in from session
+user = st.session_state.get("user")
 
-email = st.text_input(
-    L["email_label"],
-    help=L["email_help"],
-)
+if not user:
+    st.info("Please log in first to view your complaints. Go back to the home page and log in.")
+    st.stop()
 
-# Load live complaints for this user (if any)
+user_email = user.get("email", "")
+user_name = user.get("name", "Unknown")
+
+if not user_email:
+    st.warning("No email found in your session. Please log in again.")
+    st.stop()
+
+st.subheader(f"Welcome, {user_name}!")
+
+# Load live complaints for logged-in user (automatically)
 live_df = pd.DataFrame()
 
-if email.strip():
-    with get_connection(root) as conn:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT c.id, c.category, c.urgency, c.language, c.status,
-                   c.location, c.created_at, c.updated_at, c.text,
-                   d.name AS department_name
-            FROM complaints c
-            JOIN users u ON c.user_id = u.id
-            LEFT JOIN departments d ON c.department_id = d.id
-            WHERE u.email = ?
-            ORDER BY c.created_at DESC
-            """,
-            (email.strip(),),
-        )
-        rows = cur.fetchall()
-        if rows:
-            live_df = pd.DataFrame(rows)
+with get_connection(root) as conn:
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT c.id, c.complaint_id, c.category, c.urgency, c.language, c.status,
+               c.location, c.created_at, c.updated_at, c.text,
+               d.name AS department_name
+        FROM complaints c
+        JOIN users u ON c.user_id = u.id
+        LEFT JOIN departments d ON c.department_id = d.id
+        WHERE u.email = ?
+        ORDER BY c.created_at DESC
+        """,
+        (user_email,),
+    )
+    rows = cur.fetchall()
+    if rows:
+        # Get column names from cursor description
+        columns = [description[0] for description in cur.description]
+        live_df = pd.DataFrame(rows, columns=columns)
 
-if live_df.empty and not email.strip():
-    st.info(L["info_enter_email"])
-elif live_df.empty and email.strip():
+if live_df.empty:
     st.warning(L["warn_no_live"])
 
 # Optional fallback: synthetic dataset view for demo/benchmarking
@@ -176,7 +191,7 @@ if not df.empty:
     if urgency_filter != "All" and "urgency" in df.columns:
         df = df[df["urgency"] == urgency_filter]
     if search_id.strip():
-        id_col = "id" if "id" in df.columns else "complaint_id"
+        id_col = "complaint_id" if "complaint_id" in df.columns else "id"
         df = df[df[id_col].astype(str).str.contains(search_id.strip(), case=False)]
 
 st.markdown("---")
@@ -190,7 +205,7 @@ else:
     view_label = L["kind_live"] if not live_df.empty else L["kind_synth"]
     st.write(L["showing"].format(n=len(df), kind=view_label))
 
-    id_col = "id" if "id" in df.columns else "complaint_id"
+    id_col = "complaint_id" if "complaint_id" in df.columns else "id"
 
     for _, row in df.head(20).iterrows():
         with st.container():
