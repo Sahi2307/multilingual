@@ -37,7 +37,7 @@ from typing import Any, Dict, Generator, List, Optional, Tuple
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-DEFAULT_DB_RELATIVE = Path("data") / "civic_system.db"
+DEFAULT_DB_RELATIVE = Path("data") / "civic_complaints.db"
 ENV_DB_PATH = "CIVIC_DB_PATH"
 
 # Database configuration
