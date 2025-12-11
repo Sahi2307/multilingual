@@ -167,27 +167,29 @@ def initialize_database() -> None:
                     VALUES (?, ?, ?, ?, ?)
                 """, dept)
             
-            # Create default admin account
-            admin_password = "Admin@123"
-            password_hash = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            
-            cursor.execute("""
-                INSERT OR IGNORE INTO users (name, email, phone, password_hash, role, location, is_active, is_approved, must_change_password)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                'System Administrator',
-                'admin@civiccomplaints.gov',
-                '+919999999999',
-                password_hash,
-                'admin',
-                'Coimbatore',
-                True,
-                True,
-                True  # Force password change on first login
-            ))
+            # Create default admin account only if it doesn't exist
+            cursor.execute("SELECT id FROM users WHERE email = ?", ('admin@civiccomplaints.gov',))
+            if cursor.fetchone() is None:
+                admin_password = "Admin@123"
+                password_hash = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                
+                cursor.execute("""
+                    INSERT INTO users (name, email, phone, password_hash, role, location, is_active, is_approved, must_change_password)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    'System Administrator',
+                    'admin@civiccomplaints.gov',
+                    '+919999999999',
+                    password_hash,
+                    'admin',
+                    'Coimbatore',
+                    True,
+                    True,
+                    True  # Force password change on first login
+                ))
+                logger.info("Default admin account created: admin@civiccomplaints.gov / Admin@123")
             
             logger.info("Database initialized successfully")
-            logger.info("Default admin account created: admin@civiccomplaints.gov / Admin@123")
             
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
@@ -727,12 +729,6 @@ def cleanup_expired_sessions() -> None:
         logger.info("Expired sessions cleaned up")
     except Exception as e:
         logger.error(f"Session cleanup error: {e}")
-
-
-# Initialize database on module import
-if not os.path.exists(DB_PATH):
-    logger.info("Database not found. Initializing...")
-    initialize_database()
 
 
 __all__ = [

@@ -21,12 +21,15 @@ from utils.auth import (
 from utils.session_manager import init_session_state, is_authenticated, clear_session, set_user_session, show_user_info
 from utils.ui import apply_global_styles, init_sidebar_language_selector, render_footer
 from utils.database import initialize_database
+import os
 
 
 @st.cache_resource
 def init_db() -> None:
     """Initialize database once on first run."""
-    initialize_database()
+    db_path = os.path.join(os.path.dirname(__file__), 'data', 'civic_complaints.db')
+    if not os.path.exists(db_path):
+        initialize_database()
 
 
 # Initialize database if needed
