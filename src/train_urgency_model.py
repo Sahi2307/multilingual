@@ -87,9 +87,9 @@ class UrgencyTrainer:
         dtrain = xgb.DMatrix(X_train, label=y_train)
         dval = xgb.DMatrix(X_val, label=y_val)
 
-        # Parameters
+        # Parameters: use softprob to obtain calibrated probabilities
         params = {
-            "objective": "multi:softmax",
+            "objective": "multi:softprob",
             "num_class": 4,
             "max_depth": 6,
             "learning_rate": 0.1,
@@ -124,7 +124,8 @@ class UrgencyTrainer:
         logger.info(f"\nEvaluating on {split_name} set...")
 
         dtest = xgb.DMatrix(X)
-        y_pred = self.model.predict(dtest).astype(int)
+        y_prob = self.model.predict(dtest)
+        y_pred = np.asarray(y_prob).reshape(-1, len(URGENCY_LEVELS)).argmax(axis=1)
 
         # Calculate metrics
         accuracy = accuracy_score(y, y_pred)
@@ -234,14 +235,12 @@ def train_and_save_urgency_model() -> None:
         },
         "confusion_matrix": test_metrics["confusion_matrix"].tolist(),
     }
-
     results_path = model_path.parent / "urgency_test_results.json"
     with open(results_path, "w") as f:
         json.dump(test_results, f, indent=2)
 
     logger.info(f"\nTest results saved to {results_path}")
     logger.info("Training complete!")
-
 
 def main() -> None:
     """CLI entry-point for urgency model training."""
@@ -250,7 +249,6 @@ def main() -> None:
     except Exception as exc:  # noqa: BLE001
         logger.exception("Failed to train urgency model: %s", exc)
         raise SystemExit(1) from exc
-
 
 if __name__ == "__main__":  # pragma: no cover - CLI path
     main()

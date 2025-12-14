@@ -219,11 +219,13 @@ def extract_and_save_features(data_dir: Path, output_dir: Path) -> None:
 
     extractor = MurilFeatureExtractor()
 
+    full_df = pd.read_csv(data_dir / "civic_complaints.csv")
+
     for split in ["train", "val", "test"]:
         logger.info("\nProcessing %s set...", split)
 
         # Load data
-        df = pd.read_csv(data_dir / f"{split}.csv")
+        df = full_df[full_df["split"] == split].reset_index(drop=True)
 
         # Extract features
         features = extractor.encode(df["cleaned_text"].astype(str).tolist())

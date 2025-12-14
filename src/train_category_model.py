@@ -26,9 +26,9 @@ from tqdm import tqdm
 RANDOM_SEED: int = 42
 MURIL_MODEL_NAME: str = "google/muril-base-cased"
 MAX_LENGTH: int = 128
-BATCH_SIZE: int = 8
-NUM_EPOCHS: int = 5
-LEARNING_RATE: float = 2e-5
+BATCH_SIZE: int = 6  # modest batch size to balance stability/speed
+NUM_EPOCHS: int = 15  # allow more learning with class imbalance
+LEARNING_RATE: float = 5e-5
 WEIGHT_DECAY: float = 0.01
 
 CATEGORIES: List[str] = ["Sanitation", "Water Supply", "Transportation"]
@@ -128,19 +128,28 @@ class CategoryTrainer:
         )
 
         self.best_val_accuracy = 0.0
+        self.class_weights: torch.Tensor | None = None
 
     def prepare_data(self, data_dir: Path) -> tuple:
         """Load and prepare train, val, test datasets."""
         logger.info("Loading datasets...")
 
-        train_df = pd.read_csv(data_dir / "train.csv")
-        val_df = pd.read_csv(data_dir / "val.csv")
-        test_df = pd.read_csv(data_dir / "test.csv")
+        full_df = pd.read_csv(data_dir / "civic_complaints.csv")
+        train_df = full_df[full_df["split"] == "train"].reset_index(drop=True)
+        val_df = full_df[full_df["split"] == "val"].reset_index(drop=True)
+        test_df = full_df[full_df["split"] == "test"].reset_index(drop=True)
 
         # Convert categories to IDs
         train_labels = [CATEGORY_TO_ID[cat] for cat in train_df["category"]]
         val_labels = [CATEGORY_TO_ID[cat] for cat in val_df["category"]]
         test_labels = [CATEGORY_TO_ID[cat] for cat in test_df["category"]]
+
+        # Compute class weights to counter imbalance
+        counts = np.bincount(train_labels, minlength=len(CATEGORIES)).astype(float)
+        inv_freq = 1.0 / np.clip(counts, a_min=1.0, a_max=None)
+        weights = inv_freq / inv_freq.sum() * len(CATEGORIES)
+        self.class_weights = torch.tensor(weights, dtype=torch.float32, device=DEVICE)
+        logger.info("Class weights: %s", weights)
 
         # Create datasets
         train_dataset = ComplaintDataset(
@@ -171,6 +180,7 @@ class CategoryTrainer:
         """Train for one epoch."""
         self.model.train()
         total_loss = 0
+        criterion = torch.nn.CrossEntropyLoss(weight=self.class_weights)
 
         progress_bar = tqdm(dataloader, desc="Training")
         for batch in progress_bar:
@@ -183,10 +193,10 @@ class CategoryTrainer:
             outputs = self.model(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
-                labels=labels,
+                labels=None,
             )
 
-            loss = outputs.loss
+            loss = criterion(outputs.logits, labels)
             total_loss += loss.item()
 
             loss.backward()
@@ -204,6 +214,7 @@ class CategoryTrainer:
         predictions = []
         true_labels = []
         total_loss = 0
+        criterion = torch.nn.CrossEntropyLoss(weight=self.class_weights)
 
         with torch.no_grad():
             for batch in tqdm(dataloader, desc="Evaluating"):
@@ -214,10 +225,11 @@ class CategoryTrainer:
                 outputs = self.model(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
-                    labels=labels,
+                    labels=None,
                 )
 
-                total_loss += outputs.loss.item()
+                loss = criterion(outputs.logits, labels)
+                total_loss += loss.item()
 
                 preds = torch.argmax(outputs.logits, dim=1)
                 predictions.extend(preds.cpu().numpy())
@@ -272,7 +284,7 @@ class CategoryTrainer:
         logger.info(f"Starting training for {num_epochs} epochs...")
 
         training_history = []
-        patience = 3
+        patience = 4
         patience_counter = 0
 
         for epoch in range(num_epochs):
@@ -344,7 +356,12 @@ def train_and_save_category_model() -> None:
     data_path = root_dir / "data" / "civic_complaints.csv"
     data_dir = root_dir / "data"
     models_dir = root_dir / "models" / "muril_category_classifier"
-    test_df = pd.read_csv(data_dir / "test.csv") if (data_dir / "test.csv").exists() else None
+    
+    if (data_dir / "civic_complaints.csv").exists():
+        full_df = pd.read_csv(data_dir / "civic_complaints.csv")
+        test_df = full_df[full_df["split"] == "test"].reset_index(drop=True)
+    else:
+        test_df = None
 
     if not data_path.exists():
         raise FileNotFoundError(
@@ -428,6 +445,28 @@ def train_and_save_category_model() -> None:
     # Save the best model
     trainer.save_model(str(models_dir))
     logger.info("Saved fine-tuned MuRIL model to %s", models_dir)
+
+    # SANITY CHECK: Predict on a few training examples
+    logger.info("Running post-training sanity check...")
+    trainer.model.eval()
+    sample_texts = [
+        "There is garbage all over the street.",
+        "Water pipe is leaking heavily.",
+        "Bus tracking is not accurate.",
+    ]
+    sample_labels = ["Sanitation", "Water Supply", "Transportation"]
+    
+    with torch.no_grad():
+        for text, label in zip(sample_texts, sample_labels):
+            inputs = trainer.tokenizer(text, return_tensors="pt", truncation=True, max_length=128).to(DEVICE)
+            logits = trainer.model(**inputs).logits
+            probs = torch.softmax(logits, dim=-1).cpu().numpy()[0]
+            pred_idx = np.argmax(probs)
+            # CATEGORIES list order matches the ID encoding [0,1,2] from CATEGORY_TO_ID
+            pred_label = CATEGORIES[pred_idx] 
+            conf = probs[pred_idx]
+            logger.info(f"Input: '{text}' | True: {label} | Pred: {pred_label} (Conf: {conf:.4f})")
+
 
 
 def main() -> None:

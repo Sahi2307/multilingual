@@ -1,53 +1,103 @@
-# Explainable Multilingual Civic Complaint Resolution System
+# 🏛️ Explainable Multilingual Civic Complaint Resolution System
 
-A comprehensive AI-powered civic complaint management system with multilingual support (English, Hindi, Hinglish) and explainable AI using SHAP.
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)](https://streamlit.io)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 🎯 Features
+A comprehensive AI-powered civic complaint management system with multilingual support (English, Hindi, Hinglish) and explainable AI using SHAP. Built with MuRIL and XGBoost for intelligent complaint routing and prioritization.
 
-- **Multilingual Support**: Accept complaints in English, Hindi, and Hinglish
-- **AI-Powered Classification**: MuRIL for category classification (≥94% accuracy)
-- **Urgency Prediction**: XGBoost for 4-level urgency prediction (≥89% accuracy)
-- **Explainable AI**: SHAP-based natural-language explanations for all predictions
-- **Role-Based Access Control**: Separate pages for Citizens, Officials, and Admins
-  - Citizens: File, track, and view complaints
-  - Officials: Manage complaints, update status
-  - Admins: System analytics and settings
-- **Real-time Tracking**: Queue position and status updates
-- **Secure Authentication**: Password hashing, session management, multi-role support
-- **Interactive Dashboard**: Citizens, Officials, and Admin views with complaint analytics
+## 🎯 Key Features
 
-## 📋 System Requirements
+### 🌐 Multilingual Support
+- Accept complaints in **English**, **Hindi**, and **Hinglish**
+- Automatic language detection and processing
+- MuRIL-based understanding of code-mixed text
 
-- Python 3.8+
-- 4GB+ RAM
-- CUDA-capable GPU (optional, for faster training)
+### 🤖 AI-Powered Intelligence
+- **Category Classification**: MuRIL transformer (≥94% accuracy)
+- **Urgency Prediction**: XGBoost classifier (≥89% accuracy)
+- **SHAP Explanations**: Natural language explanations for all AI decisions
+- **Smart Routing**: Automatic department assignment
+- **Priority Scoring**: Queue position based on urgency and severity
+
+### 👥 Role-Based Access Control
+
+#### Citizens
+- File complaints with location data and photos
+- Track status via visual timeline (Registered → Assigned → In Progress → Completed)
+- View complaint history and AI explanations
+
+#### Officials
+- Department-specific dashboard
+- View unassigned complaints in department queue
+- Update status with remarks
+- Real-time metrics (pending, assigned, resolved)
+
+#### Administrators
+- Full system oversight and analytics
+- User management (approval/suspension)
+- Global complaint assignment
+- System settings and password management
+
+### 🔒 Security Features
+- Secure password hashing (bcrypt)
+- Session management with expiration
+- Role-based page access control
+- Mandatory password change on first login
+- CAPTCHA after failed login attempts
+
+## 📊 Project Architecture
+
+The system follows a 4-phase ML pipeline:
+
+### Phase 1: Data Preparation
+- **File**: `src/data_preparation.py`
+- Generates synthetic multilingual complaints
+- Creates balanced dataset (200 samples)
+- Computes severity scores and emergency keywords
+
+### Phase 2: Feature Extraction
+- **Files**: `src/feature_extraction.py`, `src/explainability.py`
+- Extracts 776-dimensional features (768 MuRIL + 8 structured)
+- Implements SHAP explainability for both models
+
+### Phase 3: Model Training
+- **MuRIL**: `src/train_category_model.py` - Fine-tunes Google's MuRIL for category classification
+- **XGBoost**: `src/train_urgency_model.py` - Trains gradient boosting model for urgency prediction
+
+### Phase 4: Production Application
+- **Backend**: `src/complaint_processor.py` - End-to-end processing pipeline
+- **Frontend**: Streamlit-based UI with 6 pages
+- **Database**: SQLite with optimized schema
 
 ## 🚀 Quick Start
 
-### 1. Clone Repository
+### Prerequisites
+- Python 3.8 or higher
+- 4GB+ RAM
+- CUDA-capable GPU (optional, for faster training)
 
+### Installation
+
+1. **Clone Repository**
 ```bash
-cd d:\Downloadss\Project\multilingual
-git clone <your-repo-url> civic-complaint-system
-cd civic-complaint-system
+git clone https://github.com/Sahi2307/Multilingual.git
+cd Multilingual
 ```
 
-### 2. Create Virtual Environment
-
+2. **Create Virtual Environment**
 ```bash
-python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+# source .venv/bin/activate  # Linux/Mac
 ```
 
-### 3. Install Dependencies
-
+3. **Install Dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Initialize Database
-
+4. **Initialize Database**
 ```bash
 python -c "from utils.database import initialize_database; initialize_database()"
 ```
@@ -55,344 +105,198 @@ python -c "from utils.database import initialize_database; initialize_database()
 This creates:
 - SQLite database at `data/civic_complaints.db`
 - Default admin account: `admin@civiccomplaints.gov` / `Admin@123`
+- Default official accounts (Sanitation, Water, Transportation)
 
-### 5. Generate Training Data
+### Training the Models
 
+**Step 1: Generate Training Data**
 ```bash
 python src/data_preparation.py
-```
-
-This generates 200 synthetic complaints distributed across:
-- Categories: Water Supply (67), Sanitation (66), Transportation (67)
-- Urgency: Critical (20), High (60), Medium (80), Low (40)
-- Languages: Hindi (80), English (60), Hinglish (60)
-
-### 6. Extract Features
-
-```bash
 python src/feature_extraction.py
 ```
 
-This extracts 776-dimensional features:
-- 768-dim MuRIL embeddings
-- 8-dim structured features
-
-### 7. Train Models
-
-**Category Model (MuRIL):**
+**Step 2: Train Category Model (MuRIL)**
 ```bash
 python src/train_category_model.py
 ```
+- Training time: ~10-15 minutes (GPU) / ~30-45 minutes (CPU)
+- Output: `models/muril_category_classifier/`
+- **Note**: MuRIL model is not included in the repository due to size (~500MB). You must train it locally.
 
-**Urgency Model (XGBoost):**
+**Step 3: Train Urgency Model (XGBoost)**
 ```bash
 python src/train_urgency_model.py
 ```
+- Training time: ~2-3 minutes
+- Output: `models/xgboost_urgency_predictor.pkl`
 
-### 8. Run Application
+### Running the Application
 
 ```bash
 streamlit run Home.py
 ```
 
-Access at: http://localhost:8501
+Access at: **http://localhost:8501**
 
-## 👥 Default Accounts
+## 👤 Default Accounts
 
 ### Admin Account
-- Email: `admin@civiccomplaints.gov`
-- Password: `Admin@123`
-- Role: Admin
-- **Note**: Change password on first login
+- **Email**: `admin@civiccomplaints.gov`
+- **Password**: `Admin@123`
+- **Note**: Change password immediately after first login
 
-### Test Accounts (Create via registration)
-- **Citizens**: Self-register to file and track complaints
-- **Officials**: Request access; requires admin approval to manage complaints
-- **Admins**: Created by existing admins; access to system analytics and admin panel
+### Official Accounts
+| Department | Email | Password |
+|------------|-------|----------|
+| Sanitation | `sanitation_official@civiccomplaints.gov` | `Sanitation@123` |
+| Water Supply | `watersupply_official@civiccomplaints.gov` | `Water@123` |
+| Transportation | `transportation_official@civiccomplaints.gov` | `Transportation@123` |
 
-## 🔐 Access Control
+### Citizen Accounts
+- Register via the Home page
+- No approval required for citizens
 
-### Citizen Pages
-- ✅ Home (landing page)
-- ✅ File Complaint (pages/2_File_Complaint.py)
-- ✅ My Complaints (pages/3_My_Complaints.py)
-- ✅ Track Complaint (pages/4_Track_Complaint.py)
-- ✅ About (pages/7_About.py)
-- ❌ Cannot access Official Dashboard or Admin Panel
+## 📁 Project Structure
 
-### Official Pages
-- ✅ Official Dashboard (pages/5_Official_Dashboard.py)
-- ✅ View assigned complaints, update status, add remarks
-- ❌ Cannot access citizen complaint pages
+```
+civic-complaint-system/
+├── Home.py                      # Landing page with login/registration
+├── pages/
+│   ├── 2_File_Complaint.py      # Complaint submission with AI predictions
+│   ├── 3_My_Complaints.py       # Citizen complaint history
+│   ├── 4_Track_Complaint.py     # Real-time tracking with timeline
+│   ├── 5_Official_Dashboard.py  # Official workflow management
+│   └── 6_Admin_Panel.py         # System administration
+├── src/
+│   ├── data_preparation.py      # Phase 1: Synthetic data generation
+│   ├── feature_extraction.py    # Phase 2: Feature engineering
+│   ├── explainability.py        # Phase 2: SHAP explainers
+│   ├── train_category_model.py  # Phase 3: MuRIL training
+│   ├── train_urgency_model.py   # Phase 3: XGBoost training
+│   └── complaint_processor.py   # Phase 4: Production pipeline
+├── utils/
+│   ├── database.py              # SQLite operations
+│   ├── auth.py                  # Authentication & password management
+│   ├── session_manager.py       # Session handling
+│   ├── ui.py                    # UI components & styling
+│   ├── helpers.py               # Utility functions
+│   └── notifications.py         # Notification system
+├── models/                      # Trained ML models
+│   ├── muril_category_classifier/
+│   ├── xgboost_urgency_predictor.pkl
+│   └── feature_scaler.pkl
+├── data/
+│   ├── civic_complaints.db      # SQLite database
+│   └── civic_complaints.csv     # Training dataset
+└── requirements.txt             # Python dependencies
+```
 
-### Admin Pages
-- ✅ Admin Panel (pages/6_Admin_Panel.py)
-- ✅ System analytics, complaint trends, department statistics
-- ✅ Approve/manage official accounts
-- ❌ Cannot access citizen complaint pages
+## 🔧 Technical Stack
 
-## 📂 Project Structure
+### Machine Learning
+- **MuRIL** (google/muril-base-cased): Multilingual BERT for category classification
+- **XGBoost**: Gradient boosting for urgency prediction
+- **SHAP**: Model explainability and interpretability
+- **PyTorch**: Deep learning framework
+- **Transformers**: Hugging Face library
 
-````markdown
-# Explainable Multilingual Civic Complaint Resolution System
+### Backend
+- **Streamlit**: Web application framework
+- **SQLite**: Embedded database
+- **bcrypt**: Password hashing
+- **Pandas/NumPy**: Data processing
 
-This repository contains the implementation of a multilingual civic complaint management system using MuRIL (google/muril-base-cased) for category classification and XGBoost for urgency prediction.
+### Frontend
+- **Streamlit Components**: Interactive UI elements
+- **Matplotlib**: Visualization
+- **Custom CSS**: Styling and theming
 
-## Phase 1: Data Preparation & Model Training
+## 📈 Model Performance
 
-### Setup
+### Category Classification (MuRIL)
+- **Accuracy**: 94%+
+- **F1-Score**: 0.93+ (macro average)
+- **Training Data**: 200 multilingual complaints
+- **Languages**: English, Hindi, Hinglish
 
-1. Create and activate a Python 3.8+ virtual environment.
-2. Install dependencies:
+### Urgency Prediction (XGBoost)
+- **Accuracy**: 89%+
+- **F1-Score**: 0.88+ (macro average)
+- **Features**: 776-dimensional (embeddings + structured)
+- **Classes**: Critical, High, Medium, Low
 
+## 🎨 UI Features
+
+### Visual Timeline
+- Progress tracking with 4 stages
+- Color-coded status indicators
+- Real-time updates from officials
+
+### SHAP Explanations
+- Word-level importance for category prediction
+- Feature importance for urgency prediction
+- Natural language summaries
+
+### Responsive Design
+- Mobile-friendly interface
+- Dark mode support
+- Accessible color schemes
+
+## 🔐 Security Best Practices
+
+1. **Password Policy**: Minimum 8 characters, uppercase, lowercase, number, special character
+2. **Session Management**: Automatic expiration after inactivity
+3. **Role Verification**: Server-side access control on every page
+4. **SQL Injection Prevention**: Parameterized queries
+5. **XSS Protection**: Input sanitization
+
+## 📝 Database Schema
+
+### Core Tables
+- **users**: User accounts with role-based access
+- **complaints**: Complaint records with AI predictions
+- **departments**: Department information
+- **status_updates**: Complaint status history
+- **model_predictions**: AI prediction logs
+- **sessions**: User session management
+
+## 🧪 Testing
+
+Run explainability tests:
 ```bash
-pip install -r requirements.txt
+python src/test_explainability.py
 ```
 
-> On Windows PowerShell you can use:
->
-> ```powershell
-> python -m pip install -r requirements.txt
-> ```
-
-### Directory Structure (current)
-
-- `data/`
-  - `raw/` – raw synthetic complaints
-  - `processed/` – processed datasets and feature files
-- `models/`
-  - `muril_category_classifier/` – fine-tuned MuRIL model (created after training)
-  - `xgboost_urgency_predictor.pkl` – trained XGBoost urgency model
-  - `feature_scaler.pkl` – StandardScaler for urgency features
-- `src/`
-  - `data_preparation.py` – builds synthetic dataset and structured features
-  - `feature_extraction.py` – generates MuRIL embeddings and 776-dim features
-  - `train_category_model.py` – fine-tunes MuRIL for 3-class categorization
-  - `train_urgency_model.py` – trains XGBoost urgency predictor
-- `tests/`
-  - `test_data_preparation.py` – validates dataset distributions and language detection
-  - `test_feature_extraction.py` – validates 776-dim feature matrices
-
-Additional folders (`pages/`, `utils/`, etc.) will be populated in later phases.
-
-### Running Phase 1
-
-From the project root (`civic-complaint-system/`):
-
-1. **Build the dataset** (200 complaints with splits and structured features):
-
+Benchmark processing performance:
 ```bash
-python -m src.data_preparation
+python src/benchmark_processing.py
 ```
 
-2. **Generate features for urgency model** (MuRIL embeddings + 8 structured features):
+## 🤝 Contributing
 
-```bash
-python -m src.feature_extraction
-```
+Contributions are welcome! Please follow these steps:
 
-3. **Train category model (MuRIL fine-tuning)**:
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-```bash
-python -m src.train_category_model
-```
+## 📄 License
 
-4. **Train urgency model (XGBoost)**:
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-```bash
-python -m src.train_urgency_model
-```
+## 🙏 Acknowledgments
 
-Each script logs progress and saves outputs under `data/` and `models/`.
+- **Google Research**: MuRIL multilingual model
+- **Hugging Face**: Transformers library
+- **Streamlit**: Web application framework
+- **SHAP**: Explainability framework
 
-### Testing Phase 1
+## 📧 Contact
 
-After you have run the Phase 1 scripts above, you can run the unit tests
-for data preparation and feature extraction:
+For questions or support, please open an issue on GitHub.
 
-```bash
-pytest tests/test_data_preparation.py tests/test_feature_extraction.py
-```
+---
 
-These tests verify that the dataset and 776-dimensional feature matrices
-match the project specification.
-
-## Phase 2: Explainability Integration
-
-Phase 2 adds SHAP-based explanations on top of the Phase 1 models:
-
-- `src/explainability.py` implements `ExplainabilityEngine`,
-  `CategorySHAPExplainer`, and `UrgencySHAPExplainer`.
-- `src/test_explainability.py` is a small manual script you can run with:
-
-  ```bash
-  python -m src.test_explainability
-  ```
-
-  This prints category/urgency predictions and natural-language SHAP
-  explanations for the example Hinglish complaint from the project brief.
-
-- `tests/test_explainability_integration.py` contains pytest-based
-  integration tests that:
-  - Require all Phase 1 scripts to have been run (models + scaler present).
-  - Instantiate `ExplainabilityEngine`.
-  - Call `explain_category` and `explain_urgency` on the sample complaint.
-  - Assert that SHAP outputs are well-formed and consistent with the
-    768+8 feature design (776-dimensional SHAP vector, factor importance
-    over `text_embedding` and the 8 structured features).
-
-### Running tests for Phases 1 and 2 together
-
-Once you have trained the models (Phase 1), you can run all tests with:
-
-```bash
-pytest tests/test_data_preparation.py \
-       tests/test_feature_extraction.py \
-       tests/test_explainability_integration.py
-```
-
-The explainability tests will be automatically skipped if the Phase 1
-models have not been trained yet, ensuring a clear separation between
-model training and explainability validation.
-
-### Example API response (Phase 1 + Phase 2)
-
-The thin API layer in `src/api.py` exposes a function
-`api_register_complaint(payload)` that wires together:
-
-- Phase 1 models (category + urgency prediction).
-- Phase 2 explainability (top SHAP keywords and factor importance).
-
-A typical JSON-style response looks like:
-
-```json
-{
-  "complaint_id": "C1733380000000",
-  "category": "Transportation",
-  "category_confidence": 0.963,
-  "urgency": "Medium",
-  "urgency_confidence": 0.893,
-  "department": "Municipal Department - Transportation",
-  "queue_position": 12,
-  "eta_text": "2–3 days",
-  "category_top_keywords": [
-    "road",
-    "kharab",
-    "potholes",
-    "accident",
-    "risk"
-  ],
-  "urgency_factor_importance": {
-    "text_embedding": 41.2,
-    "emergency_keyword_score": 15.0,
-    "severity_score": 20.1,
-    "affected_population": 12.3,
-    "text_length": 4.5,
-    "repeat_complaint_count": 3.8,
-    "hour_of_day": 1.8,
-    "is_weekend": 0.7,
-    "is_monsoon_season": 0.6
-  }
-}
-```
-
-This illustrates how Phase 1 predictions and Phase 2 SHAP explanations
-are combined into a single response that can be consumed by the
-Streamlit UI or any future REST API.
-
-## Phase 3: Streamlit Web Application
-
-Phase 3 provides a multi-page Streamlit UI on top of the Phase 1 models
-and Phase 2 explainability:
-
-- `Home.py` sets up global configuration, the landing dashboard, and a language selector.
-- `pages/2_File_Complaint.py` is the main entry point for citizens:
-  - Collects personal and complaint details.
-  - Calls `ComplaintProcessor.process_complaint(...)` which uses the
-    MuRIL category model, XGBoost urgency model, and SHAP explainers.
-  - Displays category and urgency predictions, queue position, ETA, and
-    SHAP-based explanations (highlighted text, factor bar chart, waterfall
-    and force plots).
-- `pages/3_My_Complaints.py` lets citizens enter the email they used when
-  filing complaints and:
-  - Loads their live complaints from the SQLite database populated by the
-    processor (Phase 1+2 outputs).
-  - Falls back to the synthetic CSV dataset if no live complaints are
-    found.
-- `pages/4_Track_Complaint.py` allows users to track a complaint by ID,
-  first using the live DB and then the synthetic CSV as a fallback.
-- `pages/5_Official_Dashboard.py` shows an official view with:
-  - Overview cards for urgency levels using both DB and CSV data.
-  - A live complaints table backed by the DB.
-  - A side panel where selecting a complaint shows full details, AI
-    explanations (via `ComplaintProcessor` and SHAP), and a simple status
-    update form that writes back to the `status_updates` table.
-- `pages/6_Admin_Panel.py` exposes system-level analytics using both the
-  synthetic CSV dataset and live DB.
-- `pages/7_About.py` documents how to use the system and explains the AI
-  components at a high level.
-
-To run the app (from the project root):
-
-```bash
-streamlit run Home.py
-```
-
-## Phase 4: Backend Integration & Testing
-
-Phase 4 focuses on wiring the models and explainability into a coherent
-backend and validating it end-to-end:
-
-- `src/complaint_processor.py` defines `ComplaintProcessor`, which:
-  - Loads the MuRIL category model and XGBoost urgency model.
-  - Rebuilds the 8 structured features for new complaints.
-  - Predicts category and urgency.
-  - Generates SHAP explanations via the `ExplainabilityEngine`.
-  - Persists complaints, status updates, notifications, and model
-    predictions into the SQLite database.
-  - Computes queue position and ETA using a priority score.
-- `utils/database.py` defines the SQLite schema and helper functions for
-  users, departments, complaints, status updates, notifications and
-  model_predictions.
-- `src/api.py` provides a thin functional API layer:
-  - `api_register_complaint(payload)` registers a complaint via the
-    processor and returns a JSON-style summary including category,
-    urgency, queue position, ETA, and SHAP summaries.
-  - `api_get_complaint_status(complaint_id)` returns complaint details
-    and status updates.
-  - `api_list_notifications(user_id, include_read=False)` returns stored
-    notifications for a user.
-
-### Testing Phase 4
-
-- `tests/test_api_integration.py` exercises the API layer on top of the
-  full stack by:
-  - Registering a complaint through `api_register_complaint`.
-  - Verifying that the complaint is stored in the database and can be
-    fetched via `api_get_complaint_status`.
-  - Confirming that a notification is recorded and can be retrieved via
-    `api_list_notifications`.
-
-Run the Phase 4 tests (after Phase 1 models are trained) with:
-
-```bash
-pytest tests/test_api_integration.py
-```
-
-### Performance sanity check
-
-For a quick, manual performance check of end-to-end complaint
-processing (including SHAP explanations), you can run:
-
-```bash
-python -m src.benchmark_processing
-```
-
-This script uses `ComplaintProcessor` on a few representative complaints
-(English, Hindi, and Hinglish) and prints per-complaint timings and an
-average. You can compare the results to the project target of processing
-one complaint in under ~4 seconds on your local hardware.
-
-These later phases continue to build on the models and artifacts
-produced in Phase 1 and the explainability layer from Phase 2.
-````
+**Built with ❤️ for better civic governance**

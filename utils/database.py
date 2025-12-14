@@ -128,6 +128,46 @@ def _ensure_default_admin(cur: sqlite3.Cursor) -> None:
     )
 
 
+def _ensure_default_officials(cur: sqlite3.Cursor) -> None:
+    """Ensure default official accounts exist."""
+    officials = [
+        ("Sanitation Officer", "sanitation_official@civiccomplaints.gov", "Sanitation@123", "Sanitation"),
+        ("Water Supply Officer", "watersupply_official@civiccomplaints.gov", "Water@123", "Water Supply"),
+        ("Transportation Officer", "transportation_official@civiccomplaints.gov", "Transportation@123", "Transportation")
+    ]
+    
+    for name, email, password, dept_cat in officials:
+        cur.execute("SELECT id FROM users WHERE email = ?", (email,))
+        if cur.fetchone():
+            continue
+            
+        cur.execute("SELECT id FROM departments WHERE category = ?", (dept_cat,))
+        row = cur.fetchone()
+        if not row:
+            # Try fuzzy match if exact category fails
+            cur.execute("SELECT id FROM departments WHERE name LIKE ?", (f"%{dept_cat}%",))
+            row = cur.fetchone()
+            if not row:
+                continue
+        dept_id = row[0]
+        
+        pwd_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        now = datetime.utcnow().isoformat()
+        
+        cur.execute("""
+            INSERT INTO users(name, email, phone, password_hash, role, location, department_id, is_active, is_approved, created_at)
+            VALUES(?,?,?,?,?,?,?,?,?,?)
+        """, (name, email, "", pwd_hash, "official", "Head Office", dept_id, 1, 1, now))
+
+
+def _ensure_column(cur: sqlite3.Cursor, table: str, column: str, definition: str) -> None:
+    """Add a column to a table if it does not already exist (idempotent)."""
+    cur.execute(f"PRAGMA table_info({table})")
+    existing = {row[1] for row in cur.fetchall()}
+    if column not in existing:
+        cur.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+
 def initialize_database() -> None:
     """
     Initialize the database with schema and default data.
@@ -154,6 +194,13 @@ def initialize_database() -> None:
                         if 'already exists' not in str(e):
                             raise
             
+            # Backfill new authentication/security columns if missing
+            _ensure_column(cursor, "users", "failed_login_attempts", "INTEGER DEFAULT 0")
+            _ensure_column(cursor, "users", "last_failed_login", "TIMESTAMP")
+            _ensure_column(cursor, "users", "captcha_required", "BOOLEAN DEFAULT FALSE")
+            _ensure_column(cursor, "sessions", "ip_address", "VARCHAR(45)")
+            _ensure_column(cursor, "sessions", "user_agent", "TEXT")
+
             # Insert default departments
             departments = [
                 ('Municipal Corporation - Water Supply', 'Water Supply', None, 'water@municipal.gov', '1800-111-001'),
@@ -198,150 +245,80 @@ def initialize_database() -> None:
 
 def init_db(project_root: Optional[Path] = None) -> None:
     """Create all required tables if they do not already exist."""
+
+    if project_root is None:
+        project_root = Path(__file__).resolve().parents[1]
+
+    schema_path = project_root / "config" / "database_schema.sql"
+    if not schema_path.exists():
+        raise FileNotFoundError(f"Schema file not found at {schema_path}")
+
+    schema_sql = schema_path.read_text(encoding="utf-8")
+
     with get_connection(project_root) as conn:
         cur = conn.cursor()
 
-        cur.execute(
+        # Apply each statement from the schema file (split on semicolons)
+        for statement in schema_sql.split(";"):
+            stmt = statement.strip()
+            if not stmt:
+                continue
+            try:
+                cur.execute(stmt)
+            except sqlite3.OperationalError as exc:  # noqa: PERF203
+                # Skip benign "already exists" errors so init is idempotent
+                if "already exists" not in str(exc):
+                    raise
+
+        # Ensure schema updates for dashboards
+        _ensure_column(cur, "complaints", "assigned_to", "INTEGER")
+        _ensure_column(cur, "departments", "sla_hours", "INTEGER DEFAULT 48")
+
+        # Seed default departments for routing if they are missing
+        departments = [
+            (
+                "Municipal Corporation - Water Supply",
+                "Water Supply",
+                None,
+                "water@municipal.gov",
+                "1800-111-001",
+            ),
+            (
+                "Municipal Corporation - Sanitation",
+                "Sanitation",
+                None,
+                "sanitation@municipal.gov",
+                "1800-111-002",
+            ),
+            (
+                "Municipal Corporation - Roads & Transport",
+                "Transportation",
+                None,
+                "transport@municipal.gov",
+                "1800-111-003",
+            ),
+        ]
+
+        cur.executemany(
             """
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                phone TEXT,
-                password_hash TEXT,
-                role TEXT NOT NULL DEFAULT 'citizen',
-                department_id INTEGER,
-                location TEXT,
-                is_active INTEGER NOT NULL DEFAULT 1,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                last_login TEXT,
-                FOREIGN KEY (department_id) REFERENCES departments(id)
-            )
-            """
+            INSERT OR IGNORE INTO departments
+                (name, category, head_official_id, contact_email, contact_phone)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            departments,
         )
 
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS departments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                category TEXT NOT NULL,
-                head_official_id INTEGER,
-                contact_email TEXT,
-                contact_phone TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                officials TEXT,
-                FOREIGN KEY (head_official_id) REFERENCES users(id)
-            )
-            """
-        )
-
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS complaints (
-                id TEXT PRIMARY KEY,
-                user_id INTEGER NOT NULL,
-                text TEXT NOT NULL,
-                category TEXT NOT NULL,
-                urgency TEXT NOT NULL,
-                language TEXT NOT NULL,
-                location TEXT,
-                affected_population TEXT,
-                status TEXT DEFAULT 'registered',
-                assigned_to INTEGER,
-                department_id INTEGER,
-                queue_position INTEGER,
-                estimated_resolution_date TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                resolved_at TEXT,
-                FOREIGN KEY(user_id) REFERENCES users(id),
-                FOREIGN KEY(assigned_to) REFERENCES users(id),
-                FOREIGN KEY(department_id) REFERENCES departments(id)
-            )
-            """
-        )
-
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS status_updates (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                complaint_id TEXT NOT NULL,
-                old_status TEXT,
-                status TEXT,
-                remarks TEXT,
-                official_id INTEGER,
-                timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(complaint_id) REFERENCES complaints(id),
-                FOREIGN KEY(official_id) REFERENCES users(id)
-            )
-            """
-        )
-
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS notifications (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                complaint_id TEXT,
-                message TEXT NOT NULL,
-                notification_type TEXT,
-                read INTEGER DEFAULT 0,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id) REFERENCES users(id),
-                FOREIGN KEY(complaint_id) REFERENCES complaints(id)
-            )
-            """
-        )
-
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS model_predictions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                complaint_id TEXT NOT NULL,
-                category_prob TEXT,
-                urgency_prob TEXT,
-                shap_values TEXT,
-                feature_vector TEXT,
-                processing_time REAL,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(complaint_id) REFERENCES complaints(id)
-            )
-            """
-        )
-
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                session_token TEXT UNIQUE NOT NULL,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                expires_at TEXT NOT NULL,
-                is_active INTEGER NOT NULL DEFAULT 1,
-                FOREIGN KEY(user_id) REFERENCES users(id)
-            )
-            """
-        )
-
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS feedback (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                complaint_id TEXT NOT NULL,
-                user_id INTEGER NOT NULL,
-                rating INTEGER CHECK(rating >= 1 AND rating <= 5),
-                comments TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(complaint_id) REFERENCES complaints(id),
-                FOREIGN KEY(user_id) REFERENCES users(id)
-            )
-            """
-        )
+        # Backfill authentication/security columns for existing DBs
+        _ensure_column(cur, "users", "failed_login_attempts", "INTEGER DEFAULT 0")
+        _ensure_column(cur, "users", "last_failed_login", "TIMESTAMP")
+        _ensure_column(cur, "users", "captcha_required", "BOOLEAN DEFAULT FALSE")
+        _ensure_column(cur, "sessions", "ip_address", "VARCHAR(45)")
+        _ensure_column(cur, "sessions", "user_agent", "TEXT")
 
         # Seed a default admin account for first-time setups. In production,
         # the password should be changed immediately after deployment.
         _ensure_default_admin(cur)
+        _ensure_default_officials(cur)
 
         logger.info("Database initialised at %s", _resolve_db_path(project_root))
 
@@ -439,7 +416,15 @@ def get_department_id_for_category(
     category: str,
     project_root: Optional[Path] = None,
 ) -> int:
-    """Return department ID for a category, creating a default if needed."""
+    """Return department ID for a category, using existing or creating default."""
+    with get_connection(project_root) as conn:
+        cur = conn.cursor()
+        # Try finding ANY department with this category
+        cur.execute("SELECT id FROM departments WHERE category = ?", (category,))
+        row = cur.fetchone()
+        if row:
+            return int(row["id"])
+            
     default_name = f"Municipal Department - {category}"
     return insert_department(default_name, category, project_root=project_root)
 
@@ -487,9 +472,17 @@ def get_complaint(complaint_id: str, project_root: Optional[Path] = None) -> Opt
     """Fetch a complaint by ID or return ``None`` if not found."""
     with get_connection(project_root) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT * FROM complaints WHERE id = ?", (complaint_id,))
+        cur.execute("SELECT * FROM complaints WHERE complaint_id = ?", (complaint_id,))
         row = cur.fetchone()
-        return dict(row) if row is not None else None
+        if row is None:
+            return None
+
+        data = dict(row)
+        # Keep the internal row id but expose the external complaint_id via the
+        # conventional "id" key for caller compatibility.
+        data["row_id"] = data.get("id")
+        data["id"] = data.get("complaint_id", data.get("id"))
+        return data
 
 
 def list_open_complaints_for_department(
@@ -511,6 +504,25 @@ def list_open_complaints_for_department(
         return [dict(r) for r in rows]
 
 
+def list_complaints_by_user(
+    user_id: int,
+    project_root: Optional[Path] = None,
+) -> List[Dict[str, Any]]:
+    """Return all complaints filed by a specific user."""
+    with get_connection(project_root) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT * FROM complaints
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            """,
+            (user_id,),
+        )
+        rows = cur.fetchall()
+        return [dict(r) for r in rows]
+
+
 def insert_status_update(
     complaint_id: str,
     status: str,
@@ -522,17 +534,27 @@ def insert_status_update(
     now = datetime.utcnow().isoformat()
     with get_connection(project_root) as conn:
         cur = conn.cursor()
+
+        # Ensure the legacy DB has the "status" column (older DBs may miss it)
+        cur.execute("PRAGMA table_info(status_updates)")
+        cols = [r[1] for r in cur.fetchall()]
+        if "status" not in cols:
+            cur.execute("ALTER TABLE status_updates ADD COLUMN status VARCHAR(50)")
+
         # Get the integer id for the complaint from the complaint_id string
         cur.execute("SELECT id FROM complaints WHERE complaint_id = ?", (complaint_id,))
         row = cur.fetchone()
         if not row:
             raise ValueError(f"Complaint {complaint_id} not found")
-        complaint_row_id = row[0]
-        
+        complaint_row_id = int(row[0])
+
+        # First create the status update referencing the internal row id
+        # (note: new_status and status are both set for backward compat with schema)
         cur.execute(
-            "INSERT INTO status_updates(complaint_id, new_status, remarks, updated_by, timestamp) VALUES(?,?,?,?,?)",
-            (complaint_row_id, status, remarks, official_id, now),
+            "INSERT INTO status_updates(complaint_id, new_status, status, remarks, updated_by, timestamp) VALUES(?,?,?,?,?,?)",
+            (complaint_row_id, status, status, remarks, official_id, now),
         )
+        # Then update the complaints table
         cur.execute(
             "UPDATE complaints SET status = ?, updated_at = ? WHERE complaint_id = ?",
             (status, now, complaint_id),
@@ -546,9 +568,15 @@ def list_status_updates_for_complaint(
     """Return all status updates for a complaint ordered by time."""
     with get_connection(project_root) as conn:
         cur = conn.cursor()
+        cur.execute("SELECT id FROM complaints WHERE complaint_id = ?", (complaint_id,))
+        row = cur.fetchone()
+        if row is None:
+            return []
+
+        complaint_row_id = int(row[0])
         cur.execute(
             "SELECT * FROM status_updates WHERE complaint_id = ? ORDER BY timestamp ASC",
-            (complaint_id,),
+            (complaint_row_id,),
         )
         rows = cur.fetchall()
         return [dict(r) for r in rows]
@@ -557,15 +585,22 @@ def list_status_updates_for_complaint(
 def insert_notification(
     user_id: int,
     message: str,
+    complaint_id: Optional[str] = None,
     project_root: Optional[Path] = None,
 ) -> None:
     """Insert an in-app notification for a user."""
     now = datetime.utcnow().isoformat()
     with get_connection(project_root) as conn:
         cur = conn.cursor()
+        complaint_row_id = None
+        if complaint_id:
+            cur.execute("SELECT id FROM complaints WHERE complaint_id = ?", (complaint_id,))
+            row = cur.fetchone()
+            if row:
+                complaint_row_id = int(row[0])
         cur.execute(
-            "INSERT INTO notifications(user_id, message, is_read, created_at) VALUES(?,?,?,?)",
-            (user_id, message, 0, now),
+            "INSERT INTO notifications(user_id, complaint_id, message, is_read, created_at) VALUES(?,?,?,?,?)",
+            (user_id, complaint_row_id, message, 0, now),
         )
 
 
@@ -696,21 +731,22 @@ def insert_record(table: str, data: Dict[str, Any]) -> Optional[int]:
         raise
 
 
-def update_record(table: str, record_id: int, data: Dict[str, Any]) -> bool:
+def update_record(table: str, record_id: Any, data: Dict[str, Any], id_field: str = "id") -> bool:
     """
     Update a record in specified table.
     
     Args:
         table (str): Table name
-        record_id (int): Record ID to update
+        record_id (Any): Record ID to update
         data (Dict): Column-value pairs to update
+        id_field (str, optional): Name of the ID column. Defaults to "id".
     
     Returns:
         bool: True if successful, False otherwise
     """
     try:
         set_clause = ', '.join([f"{k} = ?" for k in data.keys()])
-        query = f"UPDATE {table} SET {set_clause} WHERE id = ?"
+        query = f"UPDATE {table} SET {set_clause} WHERE {id_field} = ?"
         
         with get_connection() as conn:
             cursor = conn.cursor()
@@ -731,6 +767,58 @@ def cleanup_expired_sessions() -> None:
         logger.error(f"Session cleanup error: {e}")
 
 
+def update_complaint_assignment(complaint_id: str, official_id: int) -> bool:
+    """Assign a complaint to a specific official."""
+    try:
+        update_record("complaints", complaint_id, {"assigned_to": official_id, "status": "Assigned"}, id_field="complaint_id")
+        # Also log this status change
+        insert_record("status_updates", {
+            "complaint_id": complaint_id,
+            "status": "Assigned",
+            "remarks": f"Assigned to official ID {official_id}"
+        })
+        return True
+    except Exception as e:
+        logger.error(f"Failed to assign complaint: {e}")
+        return False
+
+
+def get_all_complaints_global(project_root: Optional[str] = None) -> List[Dict]:
+    """Retrieve all complaints for Admin view."""
+    return execute_query("""
+        SELECT c.*, d.name as department_name, u.name as official_name
+        FROM complaints c
+        LEFT JOIN departments d ON c.department_id = d.id
+        LEFT JOIN users u ON c.assigned_to = u.id
+        ORDER BY c.created_at DESC
+    """, fetch="all")
+
+
+def get_users_by_role(role: Optional[str] = None) -> List[Dict]:
+    """Retrieve users, optionally filtered by role."""
+    sql = """
+        SELECT u.id, u.name, u.email, u.phone, u.role, u.department_id, u.is_active, u.is_approved, u.last_login, d.name as department_name
+        FROM users u
+        LEFT JOIN departments d ON u.department_id = d.id
+    """
+    params = []
+    if role:
+        sql += " WHERE u.role = ?"
+        params.append(role)
+    sql += " ORDER BY u.created_at DESC"
+    return execute_query(sql, tuple(params), fetch="all")
+
+
+def update_user_status(user_id: int, is_active: bool, is_approved: bool) -> bool:
+    """Update user activation and approval status."""
+    try:
+        update_record("users", user_id, {"is_active": is_active, "is_approved": is_approved})
+        return True
+    except Exception as e:
+        logger.error(f"Failed to update user status: {e}")
+        return False
+
+
 __all__ = [
     "init_db",
     "get_or_create_user",
@@ -744,4 +832,9 @@ __all__ = [
     "list_notifications",
     "mark_notifications_read",
     "insert_model_prediction",
+    "update_complaint_assignment",
+    "get_all_complaints_global",
+    "get_users_by_role",
+    "update_user_status",
+    "list_complaints_by_user",
 ]

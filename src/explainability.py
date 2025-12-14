@@ -395,10 +395,11 @@ class UrgencySHAPExplainer:
         # Scale using the same StandardScaler as training
         X_scaled = self.scaler.transform(X_raw)
 
-        # Predict label using XGBoost Booster - requires DMatrix
+        # Predict probabilities using XGBoost Booster (trained with multi:softprob)
         dmatrix = xgb.DMatrix(X_scaled)
-        pred_idx = int(self.model.predict(dmatrix)[0])
-        confidence = 0.85  # Default confidence for XGBoost predictions
+        probs = np.asarray(self.model.predict(dmatrix)).reshape(-1, len(URGENCY_LEVELS))[0]
+        pred_idx = int(np.argmax(probs))
+        confidence = float(probs[pred_idx])
         predicted_label = URGENCY_LEVELS[pred_idx]
 
         # SHAP values using TreeExplainer. For multi-class XGBoost,

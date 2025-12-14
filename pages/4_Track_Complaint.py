@@ -5,16 +5,8 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from utils.database import get_complaint, list_status_updates_for_complaint, init_db
-from utils.ui import apply_global_styles, init_sidebar_language_selector, render_footer, check_citizen_access
-
-
-# Initialize language selector in sidebar
-init_sidebar_language_selector()
-
-# Check citizen access
-check_citizen_access()
-
+from utils.database import get_complaint, list_status_updates_for_complaint, init_db, list_complaints_by_user
+from utils.ui import render_footer
 
 TRACK_LABELS = {
     "English": {
@@ -83,22 +75,62 @@ current_lang = st.session_state.get("language", "English")
 T = TRACK_LABELS.get(current_lang, TRACK_LABELS["English"])
 
 st.title(T["title"])
-apply_global_styles()
 
+# ... (Previous imports match)
 
+# Define root and data paths
 root = Path(__file__).resolve().parents[1]
 data_path = root / "data" / "civic_complaints.csv"
 
 # Ensure DB exists
 init_db(root)
 
-complaint_id = st.text_input(T["enter_id"], help=T["enter_help"])
+# Get current user
+user = st.session_state.get("user")
+if not user:
+    st.warning("Please log in to track your complaints.")
+    st.stop()
 
-if st.button(T["btn_search"]):
-    if not complaint_id.strip():
-        st.error(T["error_no_id"])
-        st.stop()
+st.subheader("Your Complaints")
+user_complaints = list_complaints_by_user(user["id"], project_root=root)
 
+if not user_complaints:
+    st.info("You have not filed any complaints yet.")
+    st.stop()
+
+# Convert to DataFrame for display
+df_user = pd.DataFrame(user_complaints)
+# Keep relevant columns
+if not df_user.empty:
+    cols = ["complaint_id", "category", "urgency", "status", "created_at"]
+    # Filter to cols that exist
+    show_cols = [c for c in cols if c in df_user.columns]
+    
+    # We allow selecting a complaint to view details
+    selected_row = st.dataframe(
+        df_user[show_cols],
+        use_container_width=True,
+        hide_index=True,
+        selection_mode="single-row",
+        on_select="rerun"
+    )
+    
+    # Check if a row is selected (streamlit 1.35+ selection API, or fallback)
+    # Actually, simpler to just use a selectbox or buttons for older streamlit versions if uncertain.
+    # But since requirements said streamlit>=1.28.0, st.dataframe selection might be 1.35+.
+    # Let's use a selectbox for robustness.
+    
+    selected_id = st.selectbox(
+        "Select a complaint to view details:", 
+        df_user["complaint_id"].tolist(),
+        format_func=lambda x: f"{x} - {df_user[df_user['complaint_id']==x]['category'].values[0]} ({df_user[df_user['complaint_id']==x]['status'].values[0]})"
+    )
+    
+    complaint_id = str(selected_id)
+else:
+    st.stop()
+
+if complaint_id:
     # 1) Try live DB first
     db_rec = get_complaint(complaint_id.strip(), project_root=root)
 
@@ -119,29 +151,72 @@ if st.button(T["btn_search"]):
 
         st.markdown(f"### {T['progress_timeline']}")
         updates = list_status_updates_for_complaint(complaint_id.strip(), project_root=root)
+        
+        # Determine current stage for visual timeline
+        current_status_db = db_rec.get("status", "Registered")
+        
+        # Map DB status to UI steps
+        status_mapping = {
+            "Registered": "Registered",
+            "Assigned": "Service Person Allotted",
+            "Service Person Allotted": "Service Person Allotted",  # Direct mapping
+            "In Progress": "Service on Process",
+            "Service on Process": "Service on Process",  # Direct mapping
+            "Resolved": "Completed",
+            "Completed": "Completed",  # Direct mapping
+            "Closed": "Completed"
+        }
+        
+        # UI Stages requested by user
+        stages = ["Registered", "Service Person Allotted", "Service on Process", "Completed"]
+        
+        current_ui_status = status_mapping.get(current_status_db, "Registered")
+        
+        try:
+            current_idx = stages.index(current_ui_status)
+        except ValueError:
+            current_idx = 0
+            
+        progress_cols = st.columns(len(stages))
+        for i, stage in enumerate(stages):
+            with progress_cols[i]:
+                if i < current_idx:
+                    # Completed steps
+                    st.markdown(f"✅ **{stage}**")
+        
+                elif i == current_idx:
+                    # Current step (Active)
+                    st.markdown(f"🔵 **{stage}**")
+                else:
+                    # Future steps
+                    st.markdown(f"⚪ {stage}")
+
         if not updates:
             st.info(T["no_updates"])
         else:
-            for upd in updates:
-                ts = upd.get("timestamp", "")
+            # Deduplicate updates by keeping only the latest for each unique status
+            seen_statuses = set()
+            unique_updates = []
+            for upd in reversed(updates):  # Reverse to keep latest
+                status = upd.get("status", "")
+                if status not in seen_statuses:
+                    seen_statuses.add(status)
+                    unique_updates.append(upd)
+            unique_updates.reverse()  # Back to chronological order
+            
+            for upd in unique_updates:
                 status = upd.get("status", "")
                 remarks = upd.get("remarks", "")
-                st.markdown(f"- **{status}** at {ts}  ")
+                # Change display text
+                display_status = "Assigned work" if status == "Service Person Allotted" else status
+                st.markdown(f"- **{display_status}**")
                 if remarks:
-                    st.caption(remarks)
-
-        st.markdown("### Queue information")
-        st.write(T["queue_info_live"])
-
-        st.markdown(f"### {T['dept_updates']}")
-        st.info(T["dept_info_live"])
+                    st.caption(f"  *Note: {remarks}*")
+        
+        # ... (Queue info etc)
 
     else:
-        # 2) Fallback: synthetic CSV dataset
-        if not data_path.exists():
-            st.error(T["no_data"])
-            st.stop()
-
+        # Check synthetic dataset if not found in DB
         df = pd.read_csv(data_path)
         row = df[df["complaint_id"] == complaint_id.strip()].head(1)
 

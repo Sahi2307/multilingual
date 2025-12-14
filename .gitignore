@@ -58,23 +58,10 @@ logs/
 streamlit_cache/
 .streamlit_cache/
 
-# Database (use pre-initialized or generate locally)
-*.db
-*.sqlite
-*.sqlite3
-data/civic_complaints.db
-
-# Large model artifacts (pre-trained models included, regenerate if needed)
-models/*.pkl
-models/*.joblib
-models/xgboost_urgency_predictor.json
+# Large MuRIL model (too large for GitHub, can be regenerated)
 models/muril_category_classifier/
 
-# Generated data (can be regenerated)
-data/raw/
-data/processed/
-data/civic_complaints.csv
-*.npz
+
 
 # Temporary files
 *.tmp

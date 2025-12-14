@@ -132,7 +132,7 @@ class ComplaintProcessor:
         emergency_keywords = extract_emergency_keywords(text)
         emergency_keyword_score = 1.0 if emergency_keywords else 0.0
 
-        severity_score = compute_severity_score("Medium", emergency_keywords, text)
+        severity_score = compute_severity_score(None, emergency_keywords, text)
 
         text_length = float(len(text.split()))
         affected_map = {
@@ -178,24 +178,14 @@ class ComplaintProcessor:
         X_raw, _ = explainer._build_feature_vector(text, structured_features)  # noqa: SLF001
         X_scaled = explainer.scaler.transform(X_raw)
 
-        # XGBoost Booster requires DMatrix input
+        # XGBoost Booster requires DMatrix input; model is trained with multi:softprob
         dmatrix = xgb.DMatrix(X_scaled)
-        pred_idx = int(explainer.model.predict(dmatrix)[0])
+        probs = explainer.model.predict(dmatrix)
+        probs = np.asarray(probs).reshape(-1, len(URGENCY_LEVELS))[0]
+        pred_idx = int(np.argmax(probs))
         label = URGENCY_LEVELS[pred_idx]
-        
-        # Get raw margins for all classes (for confidence)
-        # XGBoost returns class prediction, so confidence is set to a reasonable value
-        # based on the prediction
-        confidence = 0.85  # Default confidence for XGBoost multiclass predictions
-        
-        # Create probability map with uniform distribution as fallback
-        # since XGBoost Booster doesn't provide calibrated probabilities
-        prob_map = {URGENCY_LEVELS[i]: (1.0 / len(URGENCY_LEVELS)) for i in range(len(URGENCY_LEVELS))}
-        prob_map[label] = confidence  # Boost confidence for predicted class
-        
-        # Normalize probabilities
-        total = sum(prob_map.values())
-        prob_map = {k: v / total for k, v in prob_map.items()}
+        confidence = float(probs[pred_idx])
+        prob_map = {URGENCY_LEVELS[i]: float(probs[i]) for i in range(len(URGENCY_LEVELS))}
 
         explanation = explainer.explain(text, structured_features)
         return label, confidence, prob_map, explanation
@@ -301,6 +291,9 @@ class ComplaintProcessor:
 
         # 3. Generate predictions and SHAP explanations
         cat_label, cat_conf, cat_probs, cat_exp = self.predict_category(complaint_text)
+        # If the user provided a category hint, use it for routing/storage while
+        # still keeping the model prediction for explanations/metrics.
+        effective_category = category_hint if category_hint in CATEGORY_LABELS else cat_label
 
         structured_features = self._build_structured_features(complaint_text, affected_label)
         urg_label, urg_conf, urg_probs, urg_exp = self.predict_urgency(
@@ -309,8 +302,8 @@ class ComplaintProcessor:
         )
 
         # 4. Department routing
-        department_id = get_department_id_for_category(cat_label, project_root=self.project_root)
-        department_name = f"Municipal Department - {cat_label}"
+        department_id = get_department_id_for_category(effective_category, project_root=self.project_root)
+        department_name = f"Municipal Department - {effective_category}"
 
         # 5. Compute queue position and ETA
         complaint_id = generate_complaint_id()
@@ -328,7 +321,7 @@ class ComplaintProcessor:
             complaint_id=complaint_id,
             user_id=user.id,
             text=complaint_text,
-            category=cat_label,
+            category=effective_category,
             urgency=urg_label,
             language=language,
             location=location,
@@ -361,9 +354,10 @@ class ComplaintProcessor:
         # 8. Notifications
         message = (
             f"Your complaint {complaint_id} has been registered with category "
-            f"'{cat_label}' and urgency '{urg_label}'. Estimated response time: {eta_text}."
+            f"'{effective_category}' (model suggested '{cat_label}') and urgency '{urg_label}'. "
+            f"Estimated response time: {eta_text}."
         )
-        insert_notification(user_id=user.id, message=message, project_root=self.project_root)
+        insert_notification(user_id=user.id, message=message, complaint_id=complaint_id, project_root=self.project_root)
         if email:
             send_email_notification(email, "Complaint registered", message)
         if phone:
@@ -371,7 +365,7 @@ class ComplaintProcessor:
 
         return ProcessedComplaintResult(
             complaint_id=complaint_id,
-            category=cat_label,
+            category=effective_category,
             category_confidence=cat_conf,
             urgency=urg_label,
             urgency_confidence=urg_conf,

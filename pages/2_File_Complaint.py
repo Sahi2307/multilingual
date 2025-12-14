@@ -179,6 +179,12 @@ with st.form("file_complaint_form", clear_on_submit=False):
             labels["category_hint"],
             ["Let AI decide", "Sanitation", "Water Supply", "Transportation"],
         )
+
+        location_input = st.text_input(
+            labels["location"],
+            placeholder="e.g., Main Street, near City Park",
+            help="Please provide the specific location of the issue."
+        )
         
         affected_label = st.selectbox(
             labels["affected_population"],
@@ -197,16 +203,7 @@ with st.form("file_complaint_form", clear_on_submit=False):
             help=labels["complaint_help"],
         )
 
-        uploaded_photos = st.file_uploader(
-            labels["upload_photos"],
-            type=["jpg", "jpeg", "png"],
-            accept_multiple_files=True,
-        )
         st.markdown("</div>", unsafe_allow_html=True)
-
-    if uploaded_photos and len(uploaded_photos) > 3:
-        st.warning("Only the first 3 uploaded photos will be considered.")
-        uploaded_photos = uploaded_photos[:3]
 
     submitted = st.form_submit_button(labels["submit"])
 
@@ -231,7 +228,7 @@ if submitted:
             name=user_name,
             email=user_email,
             phone=user_phone,
-            location="Not specified",
+            location=location_input if location_input.strip() else "Not specified",
             complaint_text=complaint_text,
             language=complaint_language,
             affected_label=affected_label,

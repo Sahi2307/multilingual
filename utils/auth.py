@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 SESSION_TIMEOUT_MINUTES = 30
 PASSWORD_RESET_TOKEN_HOURS = 1
 MAX_LOGIN_ATTEMPTS = 3
+LOCKOUT_WINDOW_MINUTES = 15
 
 
 @dataclass
@@ -132,6 +133,7 @@ def register_user(
     role: str = "citizen",
     location: str = "",
     department_id: Optional[int] = None,
+    allow_admin_creation: bool = False,
 ) -> Tuple[bool, str, Optional[int]]:
     """
     Register a new user in the system.
@@ -144,6 +146,8 @@ def register_user(
         role (str): User role (citizen, official, admin)
         location (str): User location
         department_id (Optional[int]): Department ID for officials
+        allow_admin_creation (bool): Gate to allow creating admin accounts
+            (must be True when invoked from an admin-approved flow)
 
     Returns:
         Tuple[bool, str, Optional[int]]: (success, message, user_id)
@@ -165,6 +169,15 @@ def register_user(
         if not is_valid:
             return False, error_msg, None
 
+        # Validate role
+        allowed_roles = {"citizen", "official", "admin"}
+        if role not in allowed_roles:
+            return False, f"Invalid role. Allowed roles: {', '.join(allowed_roles)}", None
+
+        # Enforce admin creation policy
+        if role == "admin" and not allow_admin_creation:
+            return False, "Admin accounts can only be created by an existing admin.", None
+
         # Check if email already exists
         existing_user = execute_query(
             "SELECT id FROM users WHERE email = ?",
@@ -178,7 +191,7 @@ def register_user(
         password_hash = hash_password(password)
 
         # Determine approval status (citizens auto-approved, officials need approval)
-        is_approved = True if role == "citizen" else False
+        is_approved = role == "citizen" or role == "admin"
 
         # Insert user
         user_data = {
@@ -191,7 +204,9 @@ def register_user(
             "department_id": department_id,
             "is_active": True,
             "is_approved": is_approved,
-            "must_change_password": False,
+            "must_change_password": role == "admin",
+            "failed_login_attempts": 0,
+            "captcha_required": False,
         }
 
         user_id = insert_record("users", user_data)
@@ -207,8 +222,65 @@ def register_user(
         return False, f"Registration error: {str(e)}", None
 
 
+def _record_failed_login(user_id: int) -> None:
+    """Increment failed attempts, flag captcha after threshold."""
+    try:
+        user = execute_query("SELECT failed_login_attempts FROM users WHERE id = ?", (user_id,), fetch="one")
+        attempts = int(user.get("failed_login_attempts", 0)) + 1 if user else 1
+        update_record(
+            "users",
+            user_id,
+            {
+                "failed_login_attempts": attempts,
+                "last_failed_login": datetime.now(),
+                "captcha_required": attempts >= MAX_LOGIN_ATTEMPTS,
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Failed to record login attempt: %s", exc)
+
+
+def _reset_login_attempts(user_id: int) -> None:
+    """Reset failed attempts on successful login or cooldown."""
+    try:
+        update_record(
+            "users",
+            user_id,
+            {"failed_login_attempts": 0, "captcha_required": False, "last_failed_login": None},
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Failed to reset login attempts: %s", exc)
+
+
+def _requires_captcha(user: Dict, captcha_passed: bool) -> Tuple[bool, str]:
+    """Check whether captcha is required based on failed attempts window."""
+    attempts = int(user.get("failed_login_attempts", 0) or 0)
+    last_failed = user.get("last_failed_login")
+    captcha_flag = bool(user.get("captcha_required"))
+
+    if last_failed:
+        try:
+            last_failed_dt = last_failed if isinstance(last_failed, datetime) else datetime.fromisoformat(str(last_failed))
+        except Exception:
+            last_failed_dt = datetime.now()
+    else:
+        last_failed_dt = None
+
+    within_window = False
+    if last_failed_dt:
+        within_window = datetime.now() - last_failed_dt < timedelta(minutes=LOCKOUT_WINDOW_MINUTES)
+
+    if attempts >= MAX_LOGIN_ATTEMPTS and within_window or captcha_flag:
+        if not captcha_passed:
+            return True, "Too many failed attempts. Complete CAPTCHA to continue."
+    return False, ""
+
+
 def login_user(
-    email: str, password: str, role: str
+    email: str,
+    password: str,
+    role: str,
+    captcha_passed: bool = False,
 ) -> Tuple[bool, str, Optional[Dict]]:
     """
     Authenticate user and create session.
@@ -217,6 +289,7 @@ def login_user(
         email (str): User email
         password (str): Plain text password
         role (str): Expected role
+        captcha_passed (bool): Whether CAPTCHA was solved after throttling
 
     Returns:
         Tuple[bool, str, Optional[Dict]]: (success, message, user_data)
@@ -233,8 +306,15 @@ def login_user(
         if not user:
             return False, "Invalid email or password", None
 
+        # Rate limiting / CAPTCHA check
+        captcha_needed, captcha_msg = _requires_captcha(user, captcha_passed)
+        if captcha_needed:
+            _record_failed_login(user["id"])
+            return False, captcha_msg, None
+
         # Verify password
         if not verify_password(password, user["password_hash"]):
+            _record_failed_login(user["id"])
             return False, "Invalid email or password", None
 
         # Check if user is active
@@ -251,6 +331,7 @@ def login_user(
 
         # Update last login
         update_record("users", user["id"], {"last_login": datetime.now()})
+        _reset_login_attempts(user["id"])
 
         # Return user data (excluding password_hash)
         user_data = {k: v for k, v in user.items() if k != "password_hash"}
@@ -262,7 +343,7 @@ def login_user(
         return False, f"Login error: {str(e)}", None
 
 
-def create_session(user_id: int) -> Optional[str]:
+def create_session(user_id: int, ip_address: Optional[str] = None, user_agent: Optional[str] = None) -> Optional[str]:
     """
     Create a new session for authenticated user.
 
@@ -286,6 +367,8 @@ def create_session(user_id: int) -> Optional[str]:
             "session_token": session_token,
             "expires_at": expires_at,
             "is_active": True,
+            "ip_address": ip_address,
+            "user_agent": user_agent,
         }
 
         insert_record("sessions", session_data)
@@ -297,7 +380,13 @@ def create_session(user_id: int) -> Optional[str]:
         return None
 
 
-def create_session_token(user_id: int, duration_minutes: int = SESSION_TIMEOUT_MINUTES, project_root: Optional[str] = None) -> Optional[str]:
+def create_session_token(
+    user_id: int,
+    duration_minutes: int = SESSION_TIMEOUT_MINUTES,
+    project_root: Optional[str] = None,
+    ip_address: Optional[str] = None,
+    user_agent: Optional[str] = None,
+) -> Optional[str]:
     """Create a session token (API-compatible with session_manager)."""
 
     try:
@@ -309,6 +398,8 @@ def create_session_token(user_id: int, duration_minutes: int = SESSION_TIMEOUT_M
             "session_token": token,
             "expires_at": expires_at,
             "is_active": True,
+            "ip_address": ip_address,
+            "user_agent": user_agent,
         }
 
         insert_record("sessions", session_data)
